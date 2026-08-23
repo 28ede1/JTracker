@@ -1,2 +1,2 @@
-# Jtracker
-An AI-Powered job application tracker/manager
+# WIP-project
+work in progress
