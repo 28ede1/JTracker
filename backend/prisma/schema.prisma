@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -11,14 +5,384 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-
-  // Runtime queries go through Supabase's transaction pooler (port 6543).
-  // The pooler shares a small number of real Postgres connections across many
-  // app requests, so we do not exhaust the database connection limit.
   url = env("DATABASE_URL")
-
-  // Migrations bypass the transaction pooler and use the session pooler
-  // (port 5432). Migrations need advisory locks and a stable session across
-  // multiple DDL statements, which transaction-mode pooling cannot provide.
   directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+//
+// An enum is a fixed vocabulary of allowed values that is enforced by the db.
+// ---------------------------------------------------------------------------
+
+enum OpportunityType {
+  INTERNSHIP
+  JOB
+  HACKATHON
+  VIRTUAL_EVENT
+  IN_PERSON_EVENT
+}
+
+enum WorkMode {
+  REMOTE
+  HYBRID
+  ONSITE
+}
+
+enum FileType {
+  PDF
+  DOCX
+}
+
+// Tracks background resume text extraction.
+enum ParseStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// Shared by every AI-generated record. 
+enum GenerationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum ContactRelationship {
+  RECRUITER
+  HIRING_MANAGER
+  ENGINEER
+  ALUMNI
+  REFERRAL
+  OTHER
+}
+
+enum ApplicationStatus {
+  SAVED
+  APPLIED
+  SCREENING
+  INTERVIEWING
+  OFFER
+  REJECTED
+  WITHDRAWN
+  GHOSTED
+}
+
+enum AlertType {
+  APPLICATION_FOLLOW_UP
+  CONTACT_FOLLOW_UP
+  DEADLINE_REMINDER
+}
+
+enum AlertStatus {
+  PENDING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum ReportType {
+  COMPANY_OVERVIEW
+  INTERVIEW_PREP
+  RECENT_NEWS
+}
+
+// ---------------------------------------------------------------------------
+// User
+// ---------------------------------------------------------------------------
+
+
+// The id has no @default because it is supplied by the authentication provider (supabase)
+// rather than generated here.
+
+model User {
+  id        String   @id @db.Uuid
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  username  String   @unique
+
+  resumes      Resume[]
+  contacts     Contact[]
+  applications Application[]
+  alerts       Alert[]
+  fitAnalyses  FitAnalysis[]
+}
+
+// ---------------------------------------------------------------------------
+// Company
+// ---------------------------------------------------------------------------
+
+
+// Companies are shared across all users, not owned by one. Two users tracking
+// roles at the same company point at the same row, so research done once can be
+// reused instead of regenerated per user.
+//
+// `domain` is the identity key. It holds a normalized bare hostname such as
+// "stripe.com" and is unique, so "Stripe", "Stripe Inc." and "Stripe Payments"
+// collapse into one row instead of three. Names are unreliable for matching
+// because spelling, punctuation and legal suffixes vary by source. Normalizing
+// (lowercase, drop the protocol, "www." and any path) has to happen in
+// application code before the insert, since the constraint only compares
+// strings.
+//
+// `websiteUrl` is a display value. It holds the full clickable link shown in
+// the UI, such as "https://stripe.com/careers", and is never used for matching.
+//
+// Neither field points at a job posting. The link to a specific listing lives
+// on Opportunity.sourceUrl.
+
+model Company {
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  domain     String?  @unique
+  websiteUrl String?
+  logoUrl    String?
+  industry   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  opportunities   Opportunity[]
+  contacts        Contact[]
+  researchReports ResearchReport[]
+
+  @@index([name])
+}
+
+// ---------------------------------------------------------------------------
+// Opportunity
+// ---------------------------------------------------------------------------
+
+// Fields common to every opportunity are columns. Fields that vary by type,
+// such as a hackathon's team size or an event's speaker list, go in `details`
+// as JSON. This avoids a wide table full of columns that are null for most rows.
+
+model Opportunity {
+  id          String          @id @default(uuid()) @db.Uuid
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  type        OpportunityType
+  title       String
+  description String?         @db.Text
+  sourceUrl   String
+  location    String?
+  workMode    WorkMode?
+  postedAt    DateTime?
+  deadlineAt  DateTime?
+  details     Json?
+  isActive    Boolean         @default(true)
+
+  companyId String?  @db.Uuid
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  applications    Application[]
+  fitAnalyses     FitAnalysis[]
+  researchReports ResearchReport[]
+
+  @@index([companyId])
+  // Supports the main discovery feed: active opportunities of a given type,
+  // newest first. A single combined index serves this better than three
+  // separate ones, because Postgres can only use one per table scan.
+  @@index([isActive, type, postedAt])
+  @@index([deadlineAt])
+}
+
+// ---------------------------------------------------------------------------
+// Resume
+// ---------------------------------------------------------------------------
+
+model Resume {
+  id          String      @id @default(uuid()) @db.Uuid
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  label       String
+  // Path to the file in object storage. The file itself is never stored in
+  // Postgres, which keeps rows small and lets storage scale separately.
+  filePath    String
+  fileType    FileType
+  fileSize    Int
+  parsedText  String?     @db.Text
+  parseStatus ParseStatus @default(PENDING)
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  applications Application[]
+  fitAnalyses  FitAnalysis[]
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Contact
+// ---------------------------------------------------------------------------
+
+model Contact {
+  id              String              @id @default(uuid()) @db.Uuid
+  firstName       String
+  lastName        String?
+  title           String?
+  email           String?
+  phone           String?
+  linkedinUrl     String?
+  relationship    ContactRelationship
+  notes           String?             @db.Text
+  lastContactedAt DateTime?
+  nextFollowUpAt  DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyId String?  @db.Uuid
+  company   Company? @relation(fields: [companyId], references: [id])
+
+  referredApplications Application[]
+  alerts               Alert[]
+
+  @@index([userId])
+  @@index([companyId])
+  // Drives the "who should I follow up with" view.
+  @@index([userId, nextFollowUpAt])
+}
+
+// ---------------------------------------------------------------------------
+// Application
+// ---------------------------------------------------------------------------
+
+model Application {
+  id              String            @id @default(uuid()) @db.Uuid
+  status          ApplicationStatus @default(SAVED)
+  appliedAt       DateTime?
+  statusChangedAt DateTime          @default(now())
+  notes           String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // No cascade here. Opportunities are shared, so deleting one must not
+  // silently erase a user's record that they applied to it.
+  opportunityId String      @db.Uuid
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
+
+  // SetNull rather than Cascade: deleting an old resume should not delete the
+  // application history that used it.
+  resumeId String? @db.Uuid
+  resume   Resume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+
+  referralContactId String?  @db.Uuid
+  referralContact   Contact? @relation(fields: [referralContactId], references: [id], onDelete: SetNull)
+
+  alerts Alert[]
+
+  @@index([userId])
+  @@index([opportunityId])
+  @@index([resumeId])
+  @@index([referralContactId])
+  // Drives the application tracking board, grouped by status.
+  @@index([userId, status])
+}
+
+// ---------------------------------------------------------------------------
+// FitAnalysis
+// ---------------------------------------------------------------------------
+
+// `model` and `generatedAt` record which AI model produced this and when.
+// Without them, old analyses become impossible to interpret after the prompt
+// or model changes.
+
+model FitAnalysis {
+  id          String           @id @default(uuid()) @db.Uuid
+  status      GenerationStatus @default(PENDING)
+  score       Int?
+  summary     String?          @db.Text
+  strengths   String[]
+  gaps        String[]
+  model       String?
+  generatedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  resumeId String @db.Uuid
+  resume   Resume @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+
+  opportunityId String      @db.Uuid
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([resumeId])
+  @@index([opportunityId])
+}
+
+// ---------------------------------------------------------------------------
+// ResearchReport
+// ---------------------------------------------------------------------------
+
+// Not user-owned. Research is about a company, so one report serves every user
+// looking at that company. `expiresAt` marks when the content is stale enough
+// to regenerate, so we are not paying for the same report repeatedly.
+
+model ResearchReport {
+  id          String           @id @default(uuid()) @db.Uuid
+  reportType  ReportType
+  status      GenerationStatus @default(PENDING)
+  contentMd   String?          @db.Text
+  sources     Json?
+  model       String?
+  generatedAt DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  opportunityId String?      @db.Uuid
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([opportunityId])
+}
+
+// ---------------------------------------------------------------------------
+// Alert
+// ---------------------------------------------------------------------------
+
+// An alert points at either an application or a contact, so both foreign keys
+// are optional. `dedupeKey` is unique, which is what stops a retried or
+// double-run background job from sending the same reminder twice. The database
+// rejects the duplicate insert rather than relying on the job to check first.
+model Alert {
+  id           String      @id @default(uuid()) @db.Uuid
+  type         AlertType
+  title        String
+  body         String?     @db.Text
+  scheduledFor DateTime
+  status       AlertStatus @default(PENDING)
+  sentAt       DateTime?
+  dedupeKey    String      @unique
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  applicationId String?      @db.Uuid
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  contactId String?  @db.Uuid
+  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([applicationId])
+  @@index([contactId])
+  // The sending job's only query: pending alerts that are now due.
+  @@index([status, scheduledFor])
 }
