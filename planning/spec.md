@@ -14,3 +14,15 @@ It is an AI-powered platform for discovering career opportunities, including int
 4) Contact / Networking Management
 5) Application Email Alerts & Follow-ups
 6) Automated Company Research
+
+# Data Models
+
+User
+Company
+Opportunity
+Resume
+Contact
+Application
+FitAnalysis
+ResearchReport
+Alert
