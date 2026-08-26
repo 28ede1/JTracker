@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 // it, defines an individual test
 // expect, checks that the result is what you expect
 
-import { newCompanyRules } from "./company.routes.ts";
+import { newCompanyRules } from "./company.schema.ts";
 
 describe("newCompanyRules", () => {
   it("accepts a body with only a name", () => {

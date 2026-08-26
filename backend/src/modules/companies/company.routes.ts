@@ -6,9 +6,10 @@
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";
-import { z } from "zod";
 
 import { createCompany, listCompanies, findCompany } from "./company.service.ts";
+
+import { newCompanyRules } from "./company.schema.ts";
 
 export const companyRoutes = Router();
 
@@ -26,15 +27,6 @@ companyRoutes.get("/:id", async (req, res) => {
   }
   
   res.json(company);
-});
-
-// Describes what a valid POST body looks like. Data from a client is never
-// trusted, so it gets checked before it reaches the database. Extra fields passed in
-// that are not one of the following described get stripped away.
-export const newCompanyRules = z.object({
-  name: z.string().min(1),
-  domain: z.string().optional(),
-  industry: z.string().optional(),
 });
 
 companyRoutes.post("/", async (req, res) => {
