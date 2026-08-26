@@ -13,8 +13,11 @@ import { newCompanyRules } from "./company.schema.ts";
 
 export const companyRoutes = Router();
 
-companyRoutes.get("/", async (_req, res) => {
-  const companies = await listCompanies();
+companyRoutes.get("/", async (req, res) => {
+  const page = Number(req.query.page) || 1;
+  const limit = Number(req.query.limit) || 50;
+  const companies = await listCompanies(page, limit);
+
   res.json(companies);
 });
 

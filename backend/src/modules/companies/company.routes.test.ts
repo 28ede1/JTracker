@@ -89,7 +89,12 @@ describe("GET /companies", () => {
   it("returns a list containing a created company", async () => {
     await request(app).post("/companies").send({ name: testName("Listed") });
 
-    const response = await request(app).get("/companies");
+    const response = await request(app)
+      .get("/companies")
+      .query({
+        page: 1,
+        limit: 50,
+      });
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
@@ -99,6 +104,30 @@ describe("GET /companies", () => {
     const names = response.body.map((company: { name: string }) => company.name);
     expect(names).toContain(testName("Listed"));
   });
+
+  it("respects the limit query parameter, three companies created, query page 1 limit 1", async () => {
+    await request(app).post("/companies").send({name: testName("Company A")});
+    await request(app).post("/companies").send({name: testName("Company B")});
+    await request(app).post("/companies").send({name: testName("Company C")});
+
+    const response = await request(app)
+      .get("/companies")
+      .query({
+        page: 1,
+        limit: 1,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.length).toBe(1);
+
+    const names = response.body.map((company: { name: string }) => company.name);
+    expect(
+      names.includes(testName("Company A")) ||
+      names.includes(testName("Company B")) ||
+      names.includes(testName("Company C"))
+    ).toBe(true);
+
+  })
 });
 
 describe("GET /companies/:id", () => {

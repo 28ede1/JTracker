@@ -7,10 +7,13 @@
 
 import { prisma } from "../../lib/prisma.ts";
 
-export function listCompanies() {
+export function listCompanies(page: number = 1, limit: number = 50) {
+  const skip = (page - 1) * limit;
+
   return prisma.company.findMany({
     orderBy: { name: "asc" },
-    take: 50,
+    skip,
+    take: limit,
   });
 }
 
