@@ -41,6 +41,8 @@ export function createCompany(data: {
   name: string;
   domain?: string;
   industry?: string;
+  websiteUrl?: string;
+  logoUrl?: string;
 }) {
   return prisma.company.create({ data });
 }

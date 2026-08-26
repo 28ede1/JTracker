@@ -16,6 +16,11 @@ export default defineConfig({
     // Runs test files one after another instead of in parallel.
     fileParallelism: false,
 
+    // Prints the description of every test, not just a per file summary. The
+    // default reporter only expands a file when it is slow or fails, which
+    // hides fast tests like the validation ones.
+    reporters: ["verbose"],
+
     include: ["src/**/*.test.ts"],
   },
 });

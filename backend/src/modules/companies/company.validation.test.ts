@@ -13,14 +13,52 @@ describe("newCompanyRules", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts a body with every field", () => {
+  it("accepts a body with every field (name, domain, industry, websiteUrl, logoUrl", () => {
     const result = newCompanyRules.safeParse({
       name: "Stripe",
       domain: "stripe.com",
       industry: "Fintech",
+      websiteUrl: "https://example.com",
+      logoUrl: "https://example.com/logo.png",
     });
 
     expect(result.success).toBe(true);
+
+    expect(result.data).toEqual({
+      name: "Stripe",
+      domain: "stripe.com",
+      industry: "Fintech",
+      websiteUrl: "https://example.com",
+      logoUrl: "https://example.com/logo.png",
+    });
+  });
+
+  it("strips any fields that are not permitted", () => {
+    const result = newCompanyRules.safeParse({
+      name: "Stripe",
+      domain: "stripe.com",
+      industry: "Fintech",
+      websiteUrl: "https://example.com",
+      logoUrl: "https://example.com/logo.png",
+      notAField: 2
+    });
+
+    expect(result.success).toBe(true);
+    
+    expect(result.data).toEqual({
+      name: "Stripe",
+      domain: "stripe.com",
+      industry: "Fintech",
+      websiteUrl: "https://example.com",
+      logoUrl: "https://example.com/logo.png",
+    });
+
+  });
+
+  it("rejects an empty name", () => {
+    const result = newCompanyRules.safeParse({ name: "" });
+
+    expect(result.success).toBe(false);
   });
 
   it("rejects a body with no name", () => {

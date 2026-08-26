@@ -19,6 +19,8 @@ export const newCompanyRules = z.object({
   name: z.string().min(1),
   domain: z.string().optional(),
   industry: z.string().optional(),
+  websiteUrl: z.string().optional(),
+  logoUrl: z.string().optional(),
 });
 
 // The query string of GET /companies. Parameters arrive as text, so z.coerce
