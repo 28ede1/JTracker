@@ -9,15 +9,20 @@ import { Router } from "express";
 
 import { createCompany, listCompanies, findCompany } from "./company.service.ts";
 
-import { newCompanyRules } from "./company.schema.ts";
+import { companyQueryRules, newCompanyRules } from "./company.validation.ts";
 
 export const companyRoutes = Router();
 
 companyRoutes.get("/", async (req, res) => {
-  const page = Number(req.query.page) || 1;
-  const limit = Number(req.query.limit) || 50;
-  const companies = await listCompanies(page, limit);
+  // A query string is client input, so it gets checked exactly like a body.
+  const result = companyQueryRules.safeParse(req.query);
 
+  if (!result.success) {
+    res.status(400).json({ error: "Invalid query parameters" });
+    return;
+  }
+
+  const companies = await listCompanies(result.data);
   res.json(companies);
 });
 
