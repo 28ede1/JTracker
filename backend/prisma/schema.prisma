@@ -21,6 +21,8 @@ enum OpportunityType {
   HACKATHON
   VIRTUAL_EVENT
   IN_PERSON_EVENT
+  RESEARCH
+  FELLOWSHIP
 }
 
 enum WorkMode {
@@ -113,25 +115,17 @@ model User {
 // ---------------------------------------------------------------------------
 // Company
 // ---------------------------------------------------------------------------
-
-
-// Companies are shared across all users, not owned by one. Two users tracking
-// roles at the same company point at the same row, so research done once can be
-// reused instead of regenerated per user.
 //
 // `domain` is the identity key. It holds a normalized bare hostname such as
 // "stripe.com" and is unique, so "Stripe", "Stripe Inc." and "Stripe Payments"
 // collapse into one row instead of three. Names are unreliable for matching
-// because spelling, punctuation and legal suffixes vary by source. Normalizing
-// (lowercase, drop the protocol, "www." and any path) has to happen in
-// application code before the insert, since the constraint only compares
-// strings.
+// because spelling, punctuation and legal suffixes vary by source. 
 //
 // `websiteUrl` is a display value. It holds the full clickable link shown in
 // the UI, such as "https://stripe.com/careers", and is never used for matching.
 //
-// Neither field points at a job posting. The link to a specific listing lives
-// on Opportunity.sourceUrl.
+// '@@index([name])' Creates a database index on company names so queries searching for a
+// company by name can find matching records faster without scanning the entire table.
 
 model Company {
   id         String   @id @default(uuid()) @db.Uuid
@@ -181,9 +175,6 @@ model Opportunity {
   researchReports ResearchReport[]
 
   @@index([companyId])
-  // Supports the main discovery feed: active opportunities of a given type,
-  // newest first. A single combined index serves this better than three
-  // separate ones, because Postgres can only use one per table scan.
   @@index([isActive, type, postedAt])
   @@index([deadlineAt])
 }
@@ -197,8 +188,6 @@ model Resume {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   label       String
-  // Path to the file in object storage. The file itself is never stored in
-  // Postgres, which keeps rows small and lets storage scale separately.
   filePath    String
   fileType    FileType
   fileSize    Int
@@ -217,6 +206,7 @@ model Resume {
 // ---------------------------------------------------------------------------
 // Contact
 // ---------------------------------------------------------------------------
+//  @@index([userId, nextFollowUpAt]), Drives the "who should I follow up with" view.
 
 model Contact {
   id              String              @id @default(uuid()) @db.Uuid
@@ -244,7 +234,6 @@ model Contact {
 
   @@index([userId])
   @@index([companyId])
-  // Drives the "who should I follow up with" view.
   @@index([userId, nextFollowUpAt])
 }
 
@@ -264,13 +253,9 @@ model Application {
   userId String @db.Uuid
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // No cascade here. Opportunities are shared, so deleting one must not
-  // silently erase a user's record that they applied to it.
   opportunityId String      @db.Uuid
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id])
 
-  // SetNull rather than Cascade: deleting an old resume should not delete the
-  // application history that used it.
   resumeId String? @db.Uuid
   resume   Resume? @relation(fields: [resumeId], references: [id], onDelete: SetNull)
 
@@ -283,7 +268,6 @@ model Application {
   @@index([opportunityId])
   @@index([resumeId])
   @@index([referralContactId])
-  // Drives the application tracking board, grouped by status.
   @@index([userId, status])
 }
 
@@ -383,6 +367,5 @@ model Alert {
   @@index([userId])
   @@index([applicationId])
   @@index([contactId])
-  // The sending job's only query: pending alerts that are now due.
   @@index([status, scheduledFor])
 }
