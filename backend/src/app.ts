@@ -10,6 +10,7 @@ import morgan from "morgan";
 
 import { prisma } from "./lib/prisma.ts";
 import { companyRoutes } from "./modules/companies/company.routes.ts";
+import { opportunityRoutes } from "./modules/opportunities/opportunity.routes.ts";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.ts";
 
 export function createApp() {
@@ -39,6 +40,9 @@ export function createApp() {
 
   // check if URL starts with "/companies" to access company routes
   app.use("/companies", companyRoutes);
+
+  // check if URL starts with "/opportunities" to access opportunity routes
+  app.use("/opportunities", opportunityRoutes);
 
   // only reached when every function above called next(), which is what
   // "nothing matched" actually means. has to stay below the routes
