@@ -1,0 +1,27 @@
+// Check my src TypeScript code strictly, targeting the browser and letting
+// Vite do the bundling, but don't create JavaScript files.
+
+{
+  "compilerOptions": {
+    // "preserve" leaves import statements untouched for Vite to handle,
+    // instead of rewriting them the way Node.js would need.
+    "module": "preserve",
+
+    // "dom" provides the browser types: document, window, HTMLElement.
+    // Without it, TypeScript does not know document exists.
+    "lib": ["es2022", "dom", "dom.iterable"],
+
+    // Compile JSX using the modern transform, so files do not need to
+    // import React just to use JSX syntax.
+    "jsx": "react-jsx",
+
+    // Vite's own types, which teach TypeScript that importing a file such as
+    // a .css or .svg is valid and not a missing module.
+    "types": ["vite/client"],
+
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true
+  },
+  "include": ["src", "vite.config.ts"]
+}

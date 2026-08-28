@@ -1,0 +1,29 @@
+/* ---------------------------------------------------------------------------
+   Baseline reset
+
+   Browsers apply their own default styles before yours. These few rules
+   neutralise the defaults that most often cause confusing layout bugs.
+   Everything else is left alone so real styling stays explicit.
+   --------------------------------------------------------------------------- */
+
+/* "*" matches every element on the page.
+
+   "::before" and "::after" are pseudo-elements: extra boxes CSS can generate
+   inside an element via the "content" property, with no tag in the HTML. They
+   are not real elements, so "*" does not match them and they have to be listed
+   separately or they would keep the browser default sizing. */
+*,
+*::before,
+*::after {
+  /* Make width mean total width, including padding and border. */
+  box-sizing: border-box;
+}
+
+body {
+  /* Browsers add an 8px margin here by default. */
+  margin: 0;
+
+  /* Use whatever UI font the operating system already provides. */
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
