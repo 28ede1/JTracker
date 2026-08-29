@@ -10,8 +10,10 @@ import morgan from "morgan";
 
 import { prisma } from "./lib/prisma.ts";
 import { companyRoutes } from "./modules/companies/company.routes.ts";
+import { contactRoutes } from "./modules/contacts/contact.routes.ts";
 import { opportunityRoutes } from "./modules/opportunities/opportunity.routes.ts";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.ts";
+import { requireAuth } from "./middleware/require-auth.ts";
 
 export function createApp() {
   const app = express();
@@ -44,6 +46,10 @@ export function createApp() {
   // check if URL starts with "/opportunities" to access opportunity routes
   app.use("/opportunities", opportunityRoutes);
 
+  // check if URL starts with "/contacts" and if it does,
+  // run middleware to check that a valid session exists and get user id from
+  // the session token, before handling contactRoutes
+  app.use("/contacts", requireAuth, contactRoutes);
   // only reached when every function above called next(), which is what
   // "nothing matched" actually means. has to stay below the routes
   app.use(notFoundHandler);

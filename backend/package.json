@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",
+    "@supabase/supabase-js": "^2.112.4",
     "express": "^5.2.1",
     "morgan": "^1.11.0",
     "zod": "^4.4.3"
