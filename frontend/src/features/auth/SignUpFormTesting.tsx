@@ -53,19 +53,6 @@ function SignUpFormTesting () {
     //
     // The frontend sends the access token to protected Express endpoints.
     // Express verifies the token before trusting its claims.
-    //
-    // During sign-out:
-    //
-    // 1. Supabase revokes the relevant refresh token/session
-    // 2. the Supabase client removes its locally stored session
-    // 3. the frontend treats the user as logged out
-    // 4. protected Express requests should no longer have a valid token
-    //
-    // In general:
-    //
-    // Usable frontend session = the browser treats the user as logged in.
-    //
-    // Verified access token = Express can trust which user sent a request.
 
     // Authorization Middleware
     // 1) authentication middleware identifies the user from the access token (gets user UI)

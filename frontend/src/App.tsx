@@ -3,8 +3,11 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from './lib/supabase'
 import SignUpFormTesting from './features/auth/SignUpFormTesting';
 import LogInFormTesting from './features/auth/LogInFormTesting';
+import SignOutButtonTesting from './features/auth/SignOutButtonTesting';
 
-function App() {const [session, setSession] = useState<Session | null>(null)
+function App() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [showSignUp, setShowSignUp] = useState(true)
   
 
   useEffect(() => {
@@ -12,7 +15,7 @@ function App() {const [session, setSession] = useState<Session | null>(null)
       const {
         data: { session },
       } = await supabase.auth.getSession()
-
+      console.log(session)
       setSession(session)
     }
 
@@ -21,10 +24,26 @@ function App() {const [session, setSession] = useState<Session | null>(null)
   return (
     <>
       <h1>Placeholder</h1>
-      {/* <SignUpFormTesting/> */}
-      {session ? "You Signed In" : <LogInFormTesting />}
 
-      
+      {session ? (
+        <SignOutButtonTesting />
+      ) : showSignUp ? (
+        <>
+          <SignUpFormTesting />
+
+          <button type="button" onClick={() => setShowSignUp(false)}>
+            Already have an account? Log in
+          </button>
+        </>
+      ) : (
+        <>
+          <LogInFormTesting />
+
+          <button type="button" onClick={() => setShowSignUp(true)}>
+            Don&apos;t have an account? Sign up
+          </button>
+        </>
+      )}
     </>
   )
 }
