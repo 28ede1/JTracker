@@ -28,6 +28,11 @@ export default defineConfig(({ mode }) => {
     test: {
       env: {
         SIGNUP_TEST_EMAIL: env.SIGNUP_TEST_EMAIL ?? '',
+
+        // The password of the confirmed test account, used by the live log-in
+        // tests. Named without VITE_ for the same reason as the address above:
+        // it is a working credential, so it must reach tests and nothing else.
+        LOGIN_TEST_PASSWORD: env.LOGIN_TEST_PASSWORD ?? '',
       },
 
       // Runs test files one after another instead of in parallel. The sign-up
