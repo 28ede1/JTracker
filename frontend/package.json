@@ -8,12 +8,15 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:live": "vitest run --mode live"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zod": "^4.5.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
@@ -21,6 +24,7 @@
     "@vitejs/plugin-react": "^6.1.0",
     "oxlint": "^1.79.0",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   }
 }

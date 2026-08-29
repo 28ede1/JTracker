@@ -13,7 +13,8 @@ if (!rootElement) {
   throw new Error('Could not find #root element in index.html')
 }
 
-// Put the <App /> component in the root; React's application lives inside root
+// Attach React to the root element and render the application.
+// <App /> is the top-level component of the React component tree.
 createRoot(rootElement).render(
   <StrictMode>
     <App />
