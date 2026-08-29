@@ -53,10 +53,6 @@ function SignUpFormTesting () {
     //
     // The frontend sends the access token to protected Express endpoints.
     // Express verifies the token before trusting its claims.
-
-    // Authorization Middleware
-    // 1) authentication middleware identifies the user from the access token (gets user UI)
-    // 2) endpoint checks access (userId retrieved equals userId that a row belongs to)
     async function handleSignUp(
         email: string,
         password: string,
