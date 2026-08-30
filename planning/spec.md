@@ -17,9 +17,10 @@ It is an AI-powered platform for discovering career opportunities, including int
 
 # Data Models
 
-User
 Company
 Opportunity
+Contact
+User
 Resume
 Contact
 Application
