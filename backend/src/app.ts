@@ -12,6 +12,7 @@ import { prisma } from "./lib/prisma.ts";
 import { companyRoutes } from "./modules/companies/company.routes.ts";
 import { contactRoutes } from "./modules/contacts/contact.routes.ts";
 import { opportunityRoutes } from "./modules/opportunities/opportunity.routes.ts";
+import { userRoutes } from "./modules/users/user.routes.ts";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.ts";
 import { requireAuth } from "./middleware/require-auth.ts";
 
@@ -50,6 +51,9 @@ export function createApp() {
   // run middleware to check that a valid session exists and get user id from
   // the session token, before handling contactRoutes
   app.use("/contacts", requireAuth, contactRoutes);
+
+  app.use("/users", requireAuth, userRoutes)
+
   // only reached when every function above called next(), which is what
   // "nothing matched" actually means. has to stay below the routes
   app.use(notFoundHandler);
