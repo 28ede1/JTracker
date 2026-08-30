@@ -1,9 +1,18 @@
-// development-only tool built into react that helps find problems in react code
+// ---------------------------------------------------------------------------
+// Entry point
+//
+// The one place that attaches React to the page. Everything else in the app is
+// a component underneath App.
+// ---------------------------------------------------------------------------
+
+// StrictMode is a development-only tool built into React that helps find
+// problems in React code.
 import { StrictMode } from 'react'
 
-// this is a fundamental react function that creates the connection
-// between react and an html element
+// createRoot is the React function that creates the connection between React
+// and an HTML element.
 import { createRoot } from 'react-dom/client'
+
 import './index.css'
 import App from './App'
 
@@ -13,8 +22,8 @@ if (!rootElement) {
   throw new Error('Could not find #root element in index.html')
 }
 
-// Attach React to the root element and render the application.
-// <App /> is the top-level component of the React component tree.
+// Attach React to the root element and render the application. <App /> is the
+// top-level component of the React component tree.
 createRoot(rootElement).render(
   <StrictMode>
     <App />

@@ -1,8 +1,18 @@
-import { describe, expect, it } from 'vitest'
+// ---------------------------------------------------------------------------
+// Sign-up input validation tests
+//
+// These run with no browser, no network and no Supabase project, because the
+// rules are just a function over a plain object. That is the payoff for putting
+// them in their own file instead of inline in the component.
+//
+// The vitest API used throughout:
+//
+// - describe groups related tests
+// - it defines an individual test
+// - expect checks that the result is what you expect
+// ---------------------------------------------------------------------------
 
-// describe, groups related tests
-// it, defines an individual test
-// expect, checks that the result is what you expect
+import { describe, expect, it } from 'vitest'
 
 import { signUpRules } from './signup.validation'
 
@@ -11,9 +21,6 @@ import { signUpRules } from './signup.validation'
 // vary one thing away from it so a failure can only mean that one thing.
 const VALID_PASSWORD = 'Passw0rd!'
 
-// These run with no browser, no network and no Supabase project, because the
-// rules are just a function over a plain object. That is the payoff for putting
-// them in their own file instead of inline in the component.
 describe('signUpRules, email', () => {
   it('accepts a valid email and password', () => {
     const result = signUpRules.safeParse({

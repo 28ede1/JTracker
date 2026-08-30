@@ -1,12 +1,22 @@
-import { createClient } from '@supabase/supabase-js'
-
 // ---------------------------------------------------------------------------
 // Supabase client
 //
-// One shared client for the whole app. Components import this instead of
-// calling createClient themselves, which keeps the configuration in a single
-// place and means there is only ever one auth session held in memory.
+// A client is an object that lets the frontend communicate with Supabase.
+//
+// createClient needs a project URL to tell the client which Supabase project to
+// send requests to, and a publishable key to identify the project and allow the
+// frontend to use its public services.
+//
+// supabase.auth.signUp(...)
+// supabase.auth.signInWithPassword(...)
+// supabase.auth.signOut()
+//
+// The client also stores and manages the user's authentication session in the
+// browser. We create it once here and import the same client throughout the app
+// instead of creating a separate Supabase connection in every component.
 // ---------------------------------------------------------------------------
+
+import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY

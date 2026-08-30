@@ -159,9 +159,8 @@ describe('signUpWithEmail, injected client', () => {
     // cleaned values rather than the raw ones.
     let received: unknown
 
-    // allows you to test that signUp gets ran after validation
-    // without actually creating auth records on supabase with a
-    // real signUp call
+    // Proves signUp runs after validation, without a real call creating an
+    // auth record on Supabase.
     const recordingClient = {
       auth: {
         signUp: async (credentials: unknown) => {
@@ -185,8 +184,7 @@ describe('signUpWithEmail, injected client', () => {
   })
 
   it('reports a Supabase error as a failed result', async () => {
-
-    // this is pretending that supabase in this case responded with a rate limit error
+    // Pretends Supabase responded with a rate-limit error.
     const client = fakeClient({
       data: { user: null, session: null },
       error: { message: 'Email rate limit exceeded' },

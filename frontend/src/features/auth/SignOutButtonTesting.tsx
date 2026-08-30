@@ -1,48 +1,55 @@
+// ---------------------------------------------------------------------------
+// Sign-out button
+//
+// Same structure as SignUpFormTesting.tsx, minus the form. There is nothing to
+// type, so there is no input, no validation, and no submit handler. See that
+// file for what a session and an access token are.
+//
+// During sign-out:
+//
+// 1. Supabase revokes the relevant refresh token/session
+// 2. the Supabase client removes its locally stored session
+// 3. the frontend treats the user as logged out
+// 4. protected Express requests should no longer have a valid token
+//
+// In general:
+//
+// Usable frontend session = the browser treats the user as logged in.
+//
+// Verified access token = Express can trust which user sent a request.
+// ---------------------------------------------------------------------------
+
 import { useState } from 'react'
 
 import { signOut } from './signout.service'
 
-function SignOutButtonTesting () {
-    const [successMessage, setSuccessMessage] = useState("")
-    const [errorMessage, setErrorMessage] = useState("")
+function SignOutButtonTesting() {
+  const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
-    // During sign-out:
-    //
-    // 1. Supabase revokes the relevant refresh token/session
-    // 2. the Supabase client removes its locally stored session
-    // 3. the frontend treats the user as logged out
-    // 4. protected Express requests should no longer have a valid token
-    //
-    // In general:
-    //
-    // Usable frontend session = the browser treats the user as logged in.
-    //
-    // Verified access token = Express can trust which user sent a request.
+  async function handleSignOut() {
+    const result = await signOut()
 
-    async function handleSignOut() {
-        const result = await signOut();
-
-        if (!result.ok) {
-            setErrorMessage(result.message)
-            setSuccessMessage("");
-            return;
-        }
-
-        setSuccessMessage("You have signed out successfully.")
-        setErrorMessage("")
+    if (!result.ok) {
+      setErrorMessage(result.message)
+      setSuccessMessage('')
+      return
     }
 
-    return (
-        <>
-            <button type="button" onClick={handleSignOut}>
-                Sign Out
-            </button>
+    setSuccessMessage('You have signed out successfully.')
+    setErrorMessage('')
+  }
 
-            {successMessage && <p>{successMessage}</p>}
-            {errorMessage && <p>{errorMessage}</p>}
-        </>
-    )
+  return (
+    <>
+      <button type="button" onClick={handleSignOut}>
+        Sign out
+      </button>
 
+      {successMessage && <p>{successMessage}</p>}
+      {errorMessage && <p>{errorMessage}</p>}
+    </>
+  )
 }
 
 export default SignOutButtonTesting

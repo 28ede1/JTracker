@@ -18,12 +18,14 @@ import { logInWithEmail } from './login.service'
 // user and sends no email, so nothing has to be deleted from the dashboard
 // afterwards. What it does need is the opposite: an account that already
 // exists, is confirmed, and whose password this file can be told.
+//
+// Only the comments below are new. Anything left unexplained is explained in
+// the sign-up file.
 // ---------------------------------------------------------------------------
 
 const TEST_PREFIX = 'jtracker-test'
 
-// The same inbox the sign-up tests use, read from .env.local so it never
-// reaches git or the browser bundle.
+// The same inbox the sign-up tests use.
 const TEST_EMAIL: string = import.meta.env.SIGNUP_TEST_EMAIL ?? ''
 
 // The password of that confirmed account. It lives in .env.local rather than in
@@ -41,24 +43,19 @@ function registeredEmail() {
   return `${name}+${TEST_PREFIX}-registered@${domain}`
 }
 
-// Well-formed but never sent anywhere. The offline tests stop at validation or
-// at a stand-in client, so any valid-looking address works.
 const OFFLINE_EMAIL = 'student@example.com'
 
-// Satisfies every rule in login.validation.ts, so a failure in these tests is
-// never about password strength. It is not anyone's real password.
+// Not anyone's real password. The working credential is TEST_PASSWORD above.
 const VALID_PASSWORD = 'Passw0rd!'
 
 // ---------------------------------------------------------------------------
 // 1. Input the service refuses on its own
 // ---------------------------------------------------------------------------
 
-// These pass a client that throws if it is ever touched. That turns "no request
-// was sent" from something assumed into something the test actually proves.
-//
-// It matters more here than on sign-up. Every request that leaves the browser
-// counts against Supabase's log-in rate limit, so a malformed attempt that
-// still reaches the network spends part of the budget a real user needs.
+// The throwing client matters more here than on sign-up. Every request that
+// leaves the browser counts against Supabase's log-in rate limit, so a
+// malformed attempt that still reaches the network spends part of the budget a
+// real user needs.
 const forbiddenClient = {
   auth: {
     signInWithPassword: () => {
@@ -129,9 +126,6 @@ describe('logInWithEmail, invalid input', () => {
 // the same branch for nothing.
 // ---------------------------------------------------------------------------
 
-// Builds a client that always answers the same way, so a test can state the
-// exact response it wants to exercise.
-//
 // data is always present, even on the error responses, because that is what
 // Supabase really returns: an error comes back alongside { user: null,
 // session: null }, not instead of it.
@@ -143,8 +137,6 @@ function fakeClient(response: { data: unknown; error: unknown }) {
 
 describe('logInWithEmail, injected client', () => {
   it('passes the validated values through to Supabase', async () => {
-    // Records what the client was handed, to confirm the service forwards the
-    // cleaned values rather than the raw ones.
     let received: unknown
 
     const recordingClient = {
@@ -257,11 +249,8 @@ describe('logInWithEmail, injected client', () => {
 // 3. Real Supabase Auth
 //
 // Logs in for real, against the confirmed account the sign-up suite already
-// asks you to create by hand.
-//
-// skipIf reports these as skipped instead of failing when either variable is
-// unset. A test that cannot run should say so plainly. Failing instead would
-// train you to ignore a red suite, which is how a real failure gets missed.
+// asks you to create by hand. skipIf works as it does there, and here it needs
+// both variables to be set.
 // ---------------------------------------------------------------------------
 
 describe.skipIf(!TEST_EMAIL || !TEST_PASSWORD)('logInWithEmail, real Supabase Auth', () => {
