@@ -12,6 +12,7 @@ import { prisma } from "./lib/prisma.ts";
 import { companyRoutes } from "./modules/companies/company.routes.ts";
 import { contactRoutes } from "./modules/contacts/contact.routes.ts";
 import { opportunityRoutes } from "./modules/opportunities/opportunity.routes.ts";
+import { publicUserRoutes } from "./modules/users/user.public.routes.ts";
 import { userRoutes } from "./modules/users/user.routes.ts";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.ts";
 import { requireAuth } from "./middleware/require-auth.ts";
@@ -52,6 +53,16 @@ export function createApp() {
   // the session token, before handling contactRoutes
   app.use("/contacts", requireAuth, contactRoutes);
 
+  // two mountings on the same "/users" prefix, and the order is the whole
+  // point. express tries this one first. it only knows the path
+  // "/users/availability", which someone choosing a username has to reach
+  // before they have an account, so it sits ahead of requireAuth. every other
+  // "/users" path finds no match here, so this router calls next()
+  app.use("/users", publicUserRoutes);
+
+  // ...and lands here, where requireAuth runs first and answers 401 without a
+  // valid token. adding a route to userRoutes therefore gets the guard by
+  // default, which is the safe direction for a mistake to fall
   app.use("/users", requireAuth, userRoutes)
 
   // only reached when every function above called next(), which is what

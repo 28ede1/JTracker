@@ -49,6 +49,25 @@ describe("user routes without a token", () => {
 
     expect(response.status).toBe(401);
   });
+
+  it("returns 401 for GET /users/me", async () => {
+    const response = await request(app).get("/users/me");
+
+    expect(response.status).toBe(401);
+  });
+
+  // The availability check is the exception in this file: it is mounted ahead
+  // of requireAuth, so a missing token is not what stops it. What stops it here
+  // is a missing username, which is a plain validation failure and needs no
+  // account and no data to test.
+  //
+  // Answering { available: false } instead would report "taken" to any form
+  // that lost the parameter to a bug, which is the wrong way to be wrong.
+  it("returns 400 for an availability check with no username", async () => {
+    const response = await request(app).get("/users/availability");
+
+    expect(response.status).toBe(400);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -238,6 +257,132 @@ describe.skipIf(!email || !password)("user routes", () => {
       },
     });
   }
+
+  // -------------------------------------------------------------------------
+  // GET /users/availability
+  //
+  // Deliberately sends no Authorization header. Every other helper in this file
+  // sets one; this one must not, because the people who call this endpoint are
+  // partway through the sign-up form and have no token yet. A 401 from any test
+  // below means the route slipped behind requireAuth in app.ts.
+  // -------------------------------------------------------------------------
+
+  function checkAvailability(username: string) {
+    return request(app).get("/users/availability").query({ username });
+  }
+
+  describe("GET /users/availability", () => {
+    // Clears the account's own row, so every TEST_PREFIX name starts unused.
+    beforeEach(deleteTestUsers);
+
+    it("answers without a token", async () => {
+      const response = await checkAvailability(testName("free"));
+
+      expect(response.status).toBe(200);
+    });
+
+    it("reports an unused username as available", async () => {
+      const response = await checkAvailability(testName("free"));
+
+      expect(response.body).toEqual({ available: true });
+    });
+
+    it("reports a username that is already stored as unavailable", async () => {
+      const taken = await otherUser("taken");
+
+      const response = await checkAvailability(taken.username);
+
+      expect(response.body).toEqual({ available: false });
+    });
+
+    // The reply carries the answer and nothing else. Returning the row would
+    // hand an anonymous caller another person's id, which is the whole risk of
+    // having a public endpoint here.
+    it("reveals nothing about the account holding the name", async () => {
+      const taken = await otherUser("private");
+
+      const response = await checkAvailability(taken.username);
+
+      expect(Object.keys(response.body)).toEqual(["available"]);
+    });
+
+    // Trimmed by the same rule that trims it on the way in, so the check and
+    // the create agree about what the name actually is.
+    it("trims before checking", async () => {
+      const taken = await otherUser("spaced");
+
+      const response = await checkAvailability(`  ${taken.username}  `);
+
+      expect(response.body).toEqual({ available: false });
+    });
+
+    // Documents a real limitation rather than hiding it. Postgres compares text
+    // case-sensitively, so a different capitalisation is genuinely a free name
+    // and a create would succeed. The check agrees with the database instead of
+    // being stricter and refusing a name the user could actually have.
+    it("treats a different capitalisation as a different name", async () => {
+      const taken = await otherUser("case");
+
+      const response = await checkAvailability(taken.username.toUpperCase());
+
+      expect(response.body).toEqual({ available: true });
+    });
+
+    it("returns 400 when username is only whitespace", async () => {
+      const response = await checkAvailability("   ");
+
+      expect(response.status).toBe(400);
+    });
+
+    it("returns 400 when username is too long", async () => {
+      const response = await checkAvailability("a".repeat(51));
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe("GET /users/me", () => {
+    function getMe() {
+      return request(app).get("/users/me").set("Authorization", `Bearer ${token}`);
+    }
+
+    it("returns the signed-in user's row", async () => {
+      await prisma.user.create({
+        data: { id: userId, username: testName("mine") },
+      });
+
+      const response = await getMe();
+
+      expect(response.status).toBe(200);
+      expect(response.body.id).toBe(userId);
+      expect(response.body.username).toBe(testName("mine"));
+    });
+
+    // Having a token and having a user row are two different things, so this is
+    // the state right after sign-up. The client uses this 404 to know it should
+    // send the person through profile setup rather than into the app.
+    it("returns 404 when the row has not been created yet", async () => {
+      await deleteTestUsers();
+
+      const response = await getMe();
+
+      expect(response.status).toBe(404);
+    });
+
+    // The id is read from the token, never from the request, so there is no
+    // input that could aim this at another row.
+    it("does not return another user's row", async () => {
+      const other = await otherUser("hidden");
+      await prisma.user.create({
+        data: { id: userId, username: testName("mine") },
+      });
+
+      const response = await getMe();
+
+      expect(response.body.id).not.toBe(other.id);
+      expect(response.body.username).not.toBe(other.username);
+    });
+  });
 
   describe("POST /users", () => {
     // Provisioning only makes sense from a state where the row is absent. The

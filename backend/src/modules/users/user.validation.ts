@@ -11,14 +11,32 @@
 
 import { z } from 'zod';
 
+// ---------------------------------------------------------------------------
+// What a username is
+//
+// Defined once and reused by every rule set below. The availability check has
+// to accept exactly the names that create and update accept, otherwise the
+// sign-up form would call a name free and then fail on submit. Sharing the rule
+// makes that impossible rather than merely unlikely.
+// ---------------------------------------------------------------------------
+
+export const usernameRules = z.string().trim().min(1).max(50)
+
 export const newUserRules = z
   .object({
-    username: z.string().trim().min(1).max(50),
+    username: usernameRules,
   })
   .strict()
 
 export const updateUserRules = z
   .object({
-    username: z.string().trim().min(1).max(50),
+    username: usernameRules,
   })
   .strict()
+
+// The query string of GET /users/availability. Parameters arrive as text and a
+// missing ?username= arrives as undefined, so both are refused here rather than
+// reaching the database as an empty search.
+export const usernameQueryRules = z.object({
+  username: usernameRules,
+})
