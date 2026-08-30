@@ -14,6 +14,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
 import { signUpRules } from './signup.validation'
+import { checkUsernameAvailability } from './username.service'
 
 // A result value instead of a thrown error. The caller has to check ok before
 // TypeScript will let it reach either branch, which makes it impossible to
@@ -26,7 +27,7 @@ import { signUpRules } from './signup.validation'
 // paying off: a new case was added without reopening the code that renders it.
 export type SignUpResult =
   | { ok: true; needsEmailConfirmation: boolean }
-  | { ok: false; message: string; alreadyRegistered?: true }
+  | { ok: false; message: string; alreadyRegistered?: true, usernameTaken?: true }
 
 // input is unknown rather than SignUpInput on purpose. The whole job of this
 // function starts with distrusting what it was given, so it should not claim
@@ -39,6 +40,10 @@ export type SignUpResult =
 export async function signUpWithEmail(
   input: unknown,
   client: SupabaseClient = supabase,
+
+  // Injected for the same reason as client: these tests must be able to run
+  // with no backend listening on port 3000.
+  checkUsername: typeof checkUsernameAvailability = checkUsernameAvailability,
 ): Promise<SignUpResult> {
   const parsed = signUpRules.safeParse(input)
 
@@ -48,7 +53,68 @@ export async function signUpWithEmail(
     return { ok: false, message: parsed.error.issues[0].message }
   }
 
-  const { data, error } = await client.auth.signUp(parsed.data)
+  // -------------------------------------------------------------------------
+  // The username, asked about before the account is created
+  //
+  // The order is the important part. Supabase Auth owns the account and
+  // JTracker's database owns the username, and this code cannot delete an auth
+  // account it just created: deleting one needs the secret key, which the
+  // browser deliberately never holds. Creating the account first and only then
+  // discovering the username was taken would strand a real person, signed up
+  // but with no profile and unable to retry with the same email.
+  //
+  // Asking first is not a guarantee. Two people can pass this check seconds
+  // apart and both go on to claim the same name. The @unique constraint on
+  // User.username in the database is what actually decides, and the request
+  // that creates the user row is where a genuine clash gets reported. This
+  // check exists to give a fast, clear message in the ordinary case, not to be
+  // the rule.
+  // -------------------------------------------------------------------------
+  const availability = await checkUsername(parsed.data.username)
+
+  if (availability.status === 'taken') {
+    return {
+      ok: false,
+      message: 'That username is already taken. Try another one.',
+      usernameTaken: true,
+    }
+  }
+
+  // The third case earns its keep here. Carrying on would create an account
+  // against a name nobody confirmed was free, so an unreachable backend stops
+  // sign-up rather than half finishing it.
+  if (availability.status === 'unknown') {
+    return { ok: false, message: availability.message }
+  }
+
+  const { email, password, username } = parsed.data
+
+  // -------------------------------------------------------------------------
+  // Why the username rides along in options.data
+  //
+  // Email confirmation is on, so this call creates the account and returns no
+  // session. No session means no access token, and POST /users sits behind
+  // requireAuth, so the profile row cannot be created here. The username has to
+  // survive the gap between signing up and confirming.
+  //
+  // options.data is that carrier. Supabase stores it on the auth user as
+  // user_metadata and hands it back with the session on first log-in, which is
+  // the moment the profile row can finally be created.
+  //
+  // Two things it is not. It is not storage: JTracker's User table stays the
+  // owner of the username. And it is not trusted, because a signed-in user can
+  // rewrite their own metadata with auth.updateUser. The backend re-validates
+  // it and the @unique constraint decides, exactly as it would for any other
+  // value typed by a stranger.
+  //
+  // The fields are passed explicitly rather than handing over the whole parsed
+  // object, so the shape sent to Supabase is visible in one glance.
+  // -------------------------------------------------------------------------
+  const { data, error } = await client.auth.signUp({
+    email,
+    password,
+    options: { data: { username } },
+  })
 
   // -------------------------------------------------------------------------
   // An address that already has an account

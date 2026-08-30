@@ -21,11 +21,14 @@ import { signUpRules } from './signup.validation'
 // vary one thing away from it so a failure can only mean that one thing.
 const VALID_PASSWORD = 'Passw0rd!'
 
+const VALID_USERNAME = "Bob2"
+
 describe('signUpRules, email', () => {
   it('accepts a valid email and password', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: VALID_PASSWORD,
+      username: VALID_USERNAME
     })
 
     expect(result.success).toBe(true)
@@ -35,6 +38,7 @@ describe('signUpRules, email', () => {
     const result = signUpRules.safeParse({
       email: '  student@example.com  ',
       password: VALID_PASSWORD,
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(true)
@@ -50,6 +54,7 @@ describe('signUpRules, email', () => {
     const result = signUpRules.safeParse({
       email: 'not-an-email',
       password: VALID_PASSWORD,
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(false)
@@ -59,13 +64,14 @@ describe('signUpRules, email', () => {
     const result = signUpRules.safeParse({
       email: '',
       password: VALID_PASSWORD,
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(false)
   })
 
   it('rejects a body with no email', () => {
-    const result = signUpRules.safeParse({ password: VALID_PASSWORD })
+    const result = signUpRules.safeParse({ password: VALID_PASSWORD, username: VALID_USERNAME })
 
     expect(result.success).toBe(false)
   })
@@ -76,6 +82,7 @@ describe('signUpRules, email', () => {
     const result = signUpRules.safeParse({
       email: 'nope',
       password: VALID_PASSWORD,
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(false)
@@ -100,6 +107,7 @@ describe('signUpRules, password', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: VALID_PASSWORD,
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(true)
@@ -109,6 +117,7 @@ describe('signUpRules, password', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: 'Abcdef1!',
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(true)
@@ -118,6 +127,7 @@ describe('signUpRules, password', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: 'Ab1!efg',
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(false)
@@ -127,6 +137,7 @@ describe('signUpRules, password', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: 'passw0rd!',
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(false)
@@ -136,6 +147,7 @@ describe('signUpRules, password', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: 'PASSW0RD!',
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(false)
@@ -145,6 +157,7 @@ describe('signUpRules, password', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: 'Password!',
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(false)
@@ -154,19 +167,20 @@ describe('signUpRules, password', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: 'Passw0rdd',
+      username: VALID_USERNAME,
     })
 
     expect(result.success).toBe(false)
   })
 
   it('rejects a body with no password', () => {
-    const result = signUpRules.safeParse({ email: 'student@example.com' })
+    const result = signUpRules.safeParse({ email: 'student@example.com', username: VALID_USERNAME, })
 
     expect(result.success).toBe(false)
   })
 
   it('rejects values that are not strings', () => {
-    const result = signUpRules.safeParse({ email: 12345, password: 12345678 })
+    const result = signUpRules.safeParse({ email: 12345, password: 12345678, username: VALID_USERNAME, })
 
     expect(result.success).toBe(false)
   })
@@ -186,6 +200,7 @@ describe('signUpRules, password', () => {
       const result = signUpRules.safeParse({
         email: 'student@example.com',
         password,
+        username: VALID_USERNAME,
       })
 
       expect(result.success).toBe(false)
@@ -211,6 +226,7 @@ describe('signUpRules, unknown fields', () => {
     const result = signUpRules.safeParse({
       email: 'student@example.com',
       password: VALID_PASSWORD,
+      username: VALID_USERNAME,
       role: 'admin',
     })
 
@@ -220,7 +236,63 @@ describe('signUpRules, unknown fields', () => {
       expect(result.data).toEqual({
         email: 'student@example.com',
         password: VALID_PASSWORD,
+        username: VALID_USERNAME,
       })
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Username rules
+//
+// Additional tests to ensure that username field, if provided, gets extracted
+// ---------------------------------------------------------------------------
+
+describe('signUpRules, username', () => {
+  it('accepts username field', () => {
+    const result = signUpRules.safeParse({
+      email: " student@example.com ",
+      password: VALID_PASSWORD,
+      username: " bob2"
+    })
+
+    expect(result.success).toBe(true)
+
+    if (result.success) {
+      expect(result.data).toEqual({
+        email: 'student@example.com',
+        password: VALID_PASSWORD,
+        username: "bob2"
+      })
+    }
+  })
+
+  it('rejects data if username is not provided', () => {
+    const result = signUpRules.safeParse({
+      email: " student@example.com ",
+      password: VALID_PASSWORD,
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects empty username if provided', () => {
+    const result = signUpRules.safeParse({
+      email: " student@example.com ",
+      password: VALID_PASSWORD,
+      username: ""
+    })
+
+    expect(result.success).toBe(false)
+  })
+
+  it('accepts username with 1 character', () => {
+    const result = signUpRules.safeParse({
+      email: " student@example.com ",
+      password: VALID_PASSWORD,
+      username: " a "
+    })
+
+    expect(result.success).toBe(true)
   })
 })

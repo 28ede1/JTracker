@@ -8,7 +8,7 @@
 import { Router } from "express";
 
 import {
-    createUser,
+    ensureUser,
     findUser,
     updateUser,
   } from "./user.service.ts";
@@ -56,7 +56,7 @@ userRoutes.post("/", async (req, res) => {
         return
     }  
 
-    const user = await createUser(req.userId, result.data)
+    const user = await ensureUser(req.userId, result.data)
     res.status(201).json(user);
 })
 

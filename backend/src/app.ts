@@ -5,6 +5,7 @@
 // that opens a port, so tests can import the app without one.
 // ---------------------------------------------------------------------------
 
+import cors from "cors";
 import express from "express";
 import morgan from "morgan";
 
@@ -26,6 +27,27 @@ export function createApp() {
   // function calls next(). a function that sends a response and never calls
   // next() ends the walk, so everything below it is skipped.
   // order matters, express reads this list top to bottom.
+
+  // -------------------------------------------------------------------------
+  // Cross-origin requests
+  //
+  // The frontend is served from another origin (localhost:5173 in development),
+  // and a browser will not hand a response from one origin to a page on
+  // another unless the server says it is allowed. cors adds that permission
+  // header. Nothing changes for supertest or curl, because the rule is one
+  // browsers enforce, not one the server enforces.
+  //
+  // origin is an allowlist read from the environment, not "*". A wildcard here
+  // would let any website on the internet call this API using a visitor's
+  // browser, and later, once cookies or credentials are involved, that becomes
+  // a real hole rather than a theoretical one. Naming the one origin allowed
+  // keeps the default closed.
+  //
+  // First in the list because a browser sends a preflight OPTIONS request
+  // before the real one, and that has to be answered before any route or guard
+  // gets a say.
+  // -------------------------------------------------------------------------
+  app.use(cors({ origin: process.env.FRONTEND_URL ?? "http://localhost:5173" }));
 
   // log request to check status, calls next() right away
   app.use(morgan("dev"));

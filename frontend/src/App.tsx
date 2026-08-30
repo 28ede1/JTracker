@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 
 import { supabase } from './lib/supabase'
+import { ensureUserProfile } from './features/auth/user.service'
 import SignUpFormTesting from './features/auth/SignUpFormTesting'
 import LogInFormTesting from './features/auth/LogInFormTesting'
 import SignOutButtonTesting from './features/auth/SignOutButtonTesting'
@@ -26,7 +27,13 @@ function App() {
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      console.log(session)
+
+      // Supabase Auth has the account, but JTracker's own User table may not
+      // have a row yet. This asks the backend to create it if it is missing.
+      if (session) {
+        await ensureUserProfile(session)
+      }
+
       setSession(session)
     }
 

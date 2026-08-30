@@ -28,6 +28,8 @@ export const signUpRules = z.object({
     .regex(/[a-z]/, 'Password must contain a lowercase letter')
     .regex(/[0-9]/, 'Password must contain a number')
     .regex(/[^A-Za-z0-9]/, 'Password must contain a special character'),
+
+  username: z.string().trim().min(1).max(50),
 })
 
 // Infers the type from the schema instead of declaring it separately, so the

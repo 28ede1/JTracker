@@ -43,14 +43,40 @@ export async function isUsernameTaken(username: string) {
   return matches > 0
 }
 
-export function createUser(
+// ---------------------------------------------------------------------------
+// ensureUser
+//
+// Creates the row if it is missing, returns it if it is already there. Called
+// every time a session appears, which means it is called far more often than
+// there are rows to create, so "already exists" has to be a normal outcome
+// rather than an error.
+//
+// upsert rather than a findUnique followed by a create. Two statements leave a
+// gap: two requests from the same person, a double-clicked button or a tab
+// restored beside another, can both read "no row" and both go on to create one,
+// and the second gets a unique-constraint error. upsert is a single statement,
+// so the database settles it instead of the gap.
+//
+// update is deliberately empty. The row already has a username that the unique
+// index accepted, while the value in this request came from user_metadata,
+// which a signed-in person can rewrite for themselves with auth.updateUser. If
+// update set the username, anyone could put somebody else's name in their own
+// metadata and take it on the next page load. Empty means a repeat call can
+// never rename anyone. Renaming has its own route, updateUser, where it is an
+// explicit request rather than a side effect.
+// ---------------------------------------------------------------------------
+export function ensureUser(
   id: string,
   data: {
     username: string
   },
 ) {
-  return prisma.user.create({
-    data: {
+  return prisma.user.upsert({
+    where: {
+      id: id,
+    },
+    update: {},
+    create: {
       id,
       username: data.username,
     },

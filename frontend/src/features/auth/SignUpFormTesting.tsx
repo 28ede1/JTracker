@@ -56,6 +56,7 @@ import { signUpWithEmail } from './signup.service'
 function SignUpFormTesting() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -65,8 +66,8 @@ function SignUpFormTesting() {
   // Validation lives inside the service, so a weak password is caught here
   // without a network round trip, and the same rules still apply if sign-up is
   // ever triggered from somewhere other than this form.
-  async function handleSignUp(email: string, password: string) {
-    const result = await signUpWithEmail({ email, password })
+  async function handleSignUp(email: string, password: string, username: string) {
+    const result = await signUpWithEmail({ email, password, username })
 
     if (!result.ok) {
       setErrorMessage(result.message)
@@ -97,7 +98,7 @@ function SignUpFormTesting() {
   // -------------------------------------------------------------------------
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    await handleSignUp(email, password)
+    await handleSignUp(email, password, username)
   }
 
   return (
@@ -114,6 +115,13 @@ function SignUpFormTesting() {
         placeholder="Password"
         value={password}
         onChange={(event) => setPassword(event.target.value)}
+      />
+
+      <input
+        type="text"
+        placeholder="Username"
+        value={username}
+        onChange={(event) => setUsername(event.target.value)}
       />
 
       {/*
