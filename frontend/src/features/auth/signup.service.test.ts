@@ -231,6 +231,121 @@ describe('signUpWithEmail, injected client', () => {
 })
 
 // ---------------------------------------------------------------------------
+// 2b. An address that already has an account
+//
+// Supabase reports a duplicate in one of two ways depending on a project
+// setting, so both are driven here with a fake client. That covers a setting
+// this project is not currently using, without anything having to be changed in
+// the dashboard to test it.
+//
+// The expected result is written once, above the tests, because the point is
+// that both responses produce the *same* result. Repeating the literal in each
+// test would let the two drift apart, and a form that says one thing when
+// confirmation is on and another when it is off is a bug waiting to happen.
+// ---------------------------------------------------------------------------
+
+const ALREADY_REGISTERED = {
+  ok: false,
+  message: 'An account with this email already exists. Try logging in instead.',
+  alreadyRegistered: true,
+}
+
+describe('signUpWithEmail, already registered', () => {
+  // With email confirmation on, Supabase does not call this an error at all. It
+  // returns a success carrying a placeholder user, and the empty identities
+  // array is the only thing separating it from a real new account.
+  it('reports a duplicate that arrives disguised as a success', async () => {
+    const client = fakeClient({
+      data: {
+        user: { id: '00000000-0000-0000-0000-000000000000', identities: [] },
+        session: null,
+      },
+      error: null,
+    })
+
+    const result = await signUpWithEmail(
+      { email: OFFLINE_EMAIL, password: VALID_PASSWORD },
+      client,
+    )
+
+    expect(result).toEqual(ALREADY_REGISTERED)
+  })
+
+  // With email confirmation off, the same situation arrives as an ordinary
+  // error instead.
+  it('reports a duplicate that arrives as an error', async () => {
+    const client = fakeClient({
+      data: { user: null, session: null },
+      error: { code: 'user_already_exists', message: 'User already registered' },
+    })
+
+    const result = await signUpWithEmail(
+      { email: OFFLINE_EMAIL, password: VALID_PASSWORD },
+      client,
+    )
+
+    // Our wording, not Supabase's. "User already registered" describes a
+    // database row; the message above tells the person what to do next.
+    expect(result).toEqual(ALREADY_REGISTERED)
+  })
+
+  // The other half of the rule, and the more important half. An empty array
+  // means taken, a populated one means genuinely new, and confusing the two
+  // would refuse every real sign-up with "this email already exists".
+  it('treats a populated identities array as a new account', async () => {
+    const client = fakeClient({
+      data: {
+        user: { id: 'abc', identities: [{ id: 'identity-1', provider: 'email' }] },
+        session: null,
+      },
+      error: null,
+    })
+
+    const result = await signUpWithEmail(
+      { email: OFFLINE_EMAIL, password: VALID_PASSWORD },
+      client,
+    )
+
+    expect(result).toEqual({ ok: true, needsEmailConfirmation: true })
+  })
+
+  // identities is optional in Supabase's own types, so a response can arrive
+  // without it. Missing is not the same as empty, and only empty means taken.
+  // Without this test, a check written as !user.identities?.length would look
+  // right and would quietly reject sign-ups whenever the field was absent.
+  it('treats a missing identities array as a new account', async () => {
+    const client = fakeClient({
+      data: { user: { id: 'abc' }, session: null },
+      error: null,
+    })
+
+    const result = await signUpWithEmail(
+      { email: OFFLINE_EMAIL, password: VALID_PASSWORD },
+      client,
+    )
+
+    expect(result).toEqual({ ok: true, needsEmailConfirmation: true })
+  })
+
+  // The flag belongs to this one case. Without this test, a change that set it
+  // on every failure would still pass everything above, and a rate-limited
+  // sign-up would start telling the user to go and log in instead.
+  it('does not flag other failures as already registered', async () => {
+    const client = fakeClient({
+      data: { user: null, session: null },
+      error: { code: 'over_email_send_rate_limit', message: 'Email rate limit exceeded' },
+    })
+
+    const result = await signUpWithEmail(
+      { email: OFFLINE_EMAIL, password: VALID_PASSWORD },
+      client,
+    )
+
+    expect(result).toEqual({ ok: false, message: 'Email rate limit exceeded' })
+  })
+})
+
+// ---------------------------------------------------------------------------
 // 3. Real Supabase Auth
 //
 // Creates an account for real. Delete these from the dashboard afterwards.
@@ -253,24 +368,103 @@ describe.skipIf(!TEST_EMAIL)('signUpWithEmail, real Supabase Auth', () => {
     expect(result).toEqual({ ok: true, needsEmailConfirmation: true })
   })
 
-  // Supabase does not say "that email is taken", because doing so would let
-  // anyone test addresses against the project to learn who has an account. It
-  // returns an ordinary success instead. The privacy behaviour is the thing
-  // being pinned here, so a future change that starts leaking it fails loudly.
+  // Supabase itself does not say "that email is taken". It answers a duplicate
+  // with an ordinary success carrying a placeholder user, so that nobody can
+  // type addresses into the form to learn who has an account here. The service
+  // reads the empty identities array in that response and turns it into the
+  // failure asserted below, so this test is what proves the whole path works
+  // against the real API and not just against a fake client.
+  //
+  // It is the test most likely to break for a reason that is not a bug in this
+  // repository. The disguised response is a Supabase behaviour, so turning off
+  // email confirmation, or a change on their side to how a duplicate is
+  // reported, will surface here first.
   //
   // Costs no email and creates no account, because Supabase sends nothing when
   // the address is already confirmed. Unlike the test above, this one leaves
   // nothing behind to delete.
-  it('does not reveal that an address is already registered', async () => {
+  it('reports that an address is already registered', async () => {
     const result = await signUpWithEmail({
       email: registeredEmail(),
       password: VALID_PASSWORD,
     })
 
-    // The whole result, not just ok. Checking ok alone would also accept
-    // { ok: true, needsEmailConfirmation: false }, which would mean Supabase
-    // handed back a live session for an existing account. That is a serious
-    // bug, and the looser assertion would have waved it straight through.
-    expect(result).toEqual({ ok: true, needsEmailConfirmation: true })
+    // The whole result, not just ok. The message is the sentence the user
+    // actually reads, and alreadyRegistered is what a caller would key on to
+    // offer a log-in link, so both are worth pinning rather than settling for
+    // "something went wrong".
+    expect(result).toEqual({
+      ok: false,
+      message: 'An account with this email already exists. Try logging in instead.',
+      alreadyRegistered: true,
+    })
+  })
+
+  // The same address with the wrong password has to give the same answer. Any
+  // difference between the two would turn the form into a password oracle:
+  // submit an address twice, once with a guess, and the responses would tell
+  // you whether the guess was right.
+  //
+  // Also free. The address is confirmed, so no email is sent and no account is
+  // created.
+  it('answers a registered address the same way whatever the password', async () => {
+    const result = await signUpWithEmail({
+      email: registeredEmail(),
+      password: 'Different0ne!',
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      message: 'An account with this email already exists. Try logging in instead.',
+      alreadyRegistered: true,
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // Signing up twice, before confirming
+  //
+  // The case a real user reaches by accident: they sign up, do not see the
+  // email, and submit the form again a moment later.
+  //
+  // Supabase does not create a second account, and it does not report this as a
+  // duplicate either. The account exists but is unconfirmed, so it reads the
+  // second call as "send that confirmation email again", and resending is
+  // capped at roughly one per minute per address. Two calls back to back land
+  // inside that window, so the second one comes back as a rate limit failure.
+  //
+  // That is worth knowing rather than guessing, because it means an unconfirmed
+  // duplicate and a confirmed one produce completely different messages, and
+  // only one of them mentions an existing account.
+  //
+  // This is the most expensive test in the file: one real auth user and one
+  // email. Delete the account afterwards with the others.
+  // -------------------------------------------------------------------------
+  it('rate limits a second sign-up made before the first is confirmed', async () => {
+    // One address used twice, which is the whole point. Every other live test
+    // builds a fresh one per call.
+    const email = testEmail('unconfirmed-duplicate')
+
+    const first = await signUpWithEmail({ email, password: VALID_PASSWORD })
+
+    // Asserted rather than assumed. If the first call did not create the
+    // account, the second would be an ordinary first sign-up and this test
+    // would be measuring nothing.
+    expect(first).toEqual({ ok: true, needsEmailConfirmation: true })
+
+    const second = await signUpWithEmail({ email, password: VALID_PASSWORD })
+
+    expect(second.ok).toBe(false)
+
+    if (!second.ok) {
+      // The wait is reported in whole seconds and differs from run to run, so
+      // the number is matched as a pattern. Pinning the exact sentence would
+      // pass once and fail every run after it.
+      expect(second.message).toMatch(/only request this after \d+ seconds/i)
+
+      // Not the duplicate message. An unconfirmed account is not reported as
+      // already registered, and a caller that offered a "log in instead" link
+      // here would be sending the user to an account they cannot log in to yet.
+      expect(second).not.toHaveProperty('alreadyRegistered')
+    }
   })
 })

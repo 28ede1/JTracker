@@ -50,6 +50,32 @@ export async function signUpWithEmail(
 
   const { data, error } = await client.auth.signUp(parsed.data)
 
+  // -------------------------------------------------------------------------
+  // An address that already has an account
+  //
+  // Supabase reports this in one of two ways, depending on a project setting,
+  // so both are handled here and turned into a single result the form can
+  // render without caring which one arrived.
+  //
+  // 1. With email confirmation on, it does not report it at all. It returns an
+  //    ordinary success carrying a placeholder user whose identities array is
+  //    empty. That empty array is the only signal.
+  // 2. With email confirmation off, it returns a real error, coded
+  //    user_already_exists.
+  //
+  // Worth being clear about the trade: Supabase hides case 1 so that nobody can
+  // type addresses into this form to learn who has an account here. Reporting
+  // it gives that up in exchange for telling a real user why their sign-up did
+  // not work.
+  // -------------------------------------------------------------------------
+  if (error?.code === 'user_already_exists' || data.user?.identities?.length === 0) {
+    return {
+      ok: false,
+      message: 'An account with this email already exists. Try logging in instead.',
+      alreadyRegistered: true,
+    }
+  }
+
   if (error) {
     return { ok: false, message: error.message }
   }
