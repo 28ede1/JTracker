@@ -3,6 +3,11 @@
 //
 // Talks to the database. Nothing here knows about Express, so these functions
 // can also be called later by a scraper or a test, not just by a web request.
+//
+// Every function takes userId first, and every query filters by it. Contacts
+// are the first thing in the app that belongs to one person rather than to
+// everybody, so that argument is not a convenience: it is the line between the
+// two.
 // ---------------------------------------------------------------------------
 
 import { prisma } from "../../lib/prisma.ts";
@@ -80,6 +85,10 @@ export function findContact(userId: string, id: string) {
   });
 }
 
+// userId is spread in last, after the validated data, so it cannot be
+// overwritten by a field that arrived in the request. The order of those two
+// lines is the entire guarantee that a client cannot file a contact under
+// somebody else's account.
 export function createContact(
   userId: string,
   data: {

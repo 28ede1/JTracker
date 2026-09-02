@@ -11,8 +11,13 @@ import { z } from "zod";
 // decides which enum values are legal.
 import { ContactRelationship } from "../../../generated/prisma/enums.ts";
 
-// The body of POST /contacts. Only firstname, relationship are required,
-
+// The body of POST /contacts. Only firstName and relationship are required,
+// because a contact often starts as a name on a job posting and fills out over
+// time as you actually meet the person.
+//
+// There is no userId field. Ownership comes from the verified token in the
+// route, so accepting one here would let a client file a contact under somebody
+// else.
 export const newContactRules = z.object({
   firstName: z.string().trim().min(1).max(50),
   lastName:  z.string().trim().max(50).optional(),
@@ -55,4 +60,8 @@ export const contactQueryRules = z.object({
   companyId: z.guid().optional(),
 });
 
+// The id in GET /contacts/:id. Postgres rejects a non-uuid string as a type
+// error, so without this check a malformed id returns 500 instead of 400.
+// z.guid() rather than z.uuid() because z.uuid() also enforces version bits and
+// would reject valid ids from other systems.
 export const contactIdRules = z.guid();

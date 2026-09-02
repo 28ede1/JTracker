@@ -1,17 +1,22 @@
-// supertest is a library that lets your tests make real HTTP requests to your
-// application without starting a server. example: request(app).post("/contacts")
+// ---------------------------------------------------------------------------
+// Contact route tests
+//
+// The whole path end to end: a real HTTP request, through requireAuth and the
+// validation rules and the service, to the real database and back. supertest
+// drives the app object directly, so nothing has to be listening on a port.
+//
+// contact.validation.test.ts covers the rules on their own and runs in
+// milliseconds. These are the slower cases worth paying a round trip for.
+//
+// The one thing only this file can prove is scoping. Contacts belong to one
+// person, so several tests below create a second account's rows and check they
+// never appear, which is something no test of the rules alone could show.
+// ---------------------------------------------------------------------------
 
 import { randomUUID } from "node:crypto";
 
 import { createClient } from "@supabase/supabase-js";
 import request from "supertest";
-
-// describe: groups related tests
-// it: defines a test case
-// expect: checks expected results
-// afterEach: runs cleanup after each test
-// beforeAll: runs once before the first test in the file
-
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { createApp } from "../../app.ts";

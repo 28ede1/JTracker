@@ -20,7 +20,9 @@ export function errorHandler(
   // Full detail stays in the server log, where only you can read it.
   console.error(err);
 
-  // P2002 "Already Exists"
+  // P2002 is Prisma's code for a unique constraint being broken, such as two
+  // people claiming the same username. That is the client's situation rather
+  // than a server fault, so it earns a 409 instead of the generic 500 below.
   if (err.code === "P2002") {
     res.status(409).json({ error: "That already exists" });
     return;
@@ -31,7 +33,9 @@ export function errorHandler(
   res.status(500).json({ error: "Something went wrong" });
 }
 
-
+// Reached when no route matched at all. It answers with the method and path so
+// a typo in a URL is obvious from the response, which beats a bare 404 during
+// development.
 export function notFoundHandler(req: Request, res: Response) {
   res.status(404).json({ error: `Cannot ${req.method} ${req.path}` });
 }

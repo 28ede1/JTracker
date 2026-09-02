@@ -3,6 +3,10 @@
 //
 // Handles the web side: read the request, check the input, call the service,
 // send a response. No database code here.
+//
+// Every route in this file is mounted behind requireAuth in app.ts, so the id
+// each one writes comes from the token. The routes anyone can reach without an
+// account live in user.public.routes.ts instead.
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";
@@ -43,6 +47,12 @@ userRoutes.get("/me", async (req, res) => {
     res.json(user);
 })
 
+// Safe to call more than once. The browser sends this every time a session
+// appears, which is far more often than there are rows to create, so ensureUser
+// treats "it is already there" as an ordinary success rather than an error.
+//
+// No id in the path or the body. The row being written is always the caller's
+// own, and the id for it comes from the token.
 userRoutes.post("/", async (req, res) => {
     const result = newUserRules.safeParse(req.body);
 
@@ -54,12 +64,15 @@ userRoutes.post("/", async (req, res) => {
     if (!req.userId) {
         res.status(401).json({ error: 'Not signed in' })
         return
-    }  
+    }
 
     const user = await ensureUser(req.userId, result.data)
     res.status(201).json(user);
 })
 
+// Renaming. A username already taken by somebody else is refused by the unique
+// index in the database, which errorHandler turns into a 409, so there is no
+// check for it here.
 userRoutes.patch("/", async(req, res) => {
     const result = updateUserRules.safeParse(req.body);
 

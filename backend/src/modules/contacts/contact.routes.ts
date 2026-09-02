@@ -1,8 +1,12 @@
 // ---------------------------------------------------------------------------
-// Contacts routes
+// Contact routes
 //
 // Handles the web side: read the request, check the input, call the service,
 // send a response. No database code here.
+//
+// Every route in this file is mounted behind requireAuth in app.ts, and every
+// call below passes req.userId to the service. Contacts belong to one person,
+// so that argument is what keeps one user's rows out of another's responses.
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";

@@ -2,11 +2,14 @@
 // User input validation
 //
 // The trust boundary for the user module. Routes call these rule sets,
-// services never do, so a service always receives values that are already valid.
-
-// The client should never be able to provide an ID to change the stored user ID.
-// For security purposes, strict() is used to reject any input containing an ID,
-// rather than silently removing it.
+// services never do, so a service always receives values that are already
+// valid.
+//
+// The client should never be able to send an id and change which row is
+// written, because the id comes from the verified token instead. strict() is
+// used here rather than the plain object rule the other modules use, so a body
+// carrying an id is rejected outright rather than silently stripped. A refusal
+// tells whoever sent it that they were doing something that will never work.
 // ---------------------------------------------------------------------------
 
 import { z } from 'zod';

@@ -1,7 +1,12 @@
 // ---------------------------------------------------------------------------
-// User Service
+// User service
 //
-// Talks to the database.
+// Talks to the database. Nothing here knows about Express, so these functions
+// can also be called later by a script or a test, not just by a web request.
+//
+// Every function takes the id as its first argument and that id always comes
+// from a verified token, never from a body or a query string. See
+// middleware/require-auth.ts for why that split is the whole privacy story.
 // ---------------------------------------------------------------------------
 
 import { prisma } from "../../lib/prisma.ts"
@@ -83,6 +88,14 @@ export function ensureUser(
   })
 }
 
+// Renaming, and the only place a username ever changes. ensureUser deliberately
+// will not do it, so this is the one path, and it is an explicit request rather
+// than a side effect of signing in.
+//
+// A clash is left to the database. The unique index on username refuses the
+// write, Prisma raises P2002, and errorHandler turns that into a 409. Checking
+// first and then updating would leave a gap for two people to pass the check
+// and only one to succeed, so the constraint is allowed to be the referee.
 export function updateUser(
     id: string,
     data: {

@@ -5,6 +5,10 @@
 // the browser sends, asks Supabase who it belongs to, and puts that user id on
 // the request for the routes below it.
 //
+// Identity is decided here and nowhere else. A route never reads an id out of a
+// body or a query string, because those are typed by the client and a signed
+// token is not. That single rule is what keeps one person's rows out of
+// another person's responses.
 // ---------------------------------------------------------------------------
 
 import type { NextFunction, Request, Response } from "express";
@@ -47,8 +51,9 @@ export async function requireAuth(
     res.status(401).json({ error: "Not signed in" });
     return;
   }
-  
-  // sets the userId over the request field
+
+  // The token checked out, so the id inside it is trustworthy. Putting it on
+  // the request is how every route below reads who is calling.
   req.userId = data.user.id;
   next();
 }

@@ -13,8 +13,10 @@
 import { z } from "zod";
 
 // The body of POST /companies. Only name is required, because a company often
-// arrives from a job posting that names the employer and nothing else. 
-// (note that z.object strips the extra/unrecognized fields from the parsed result)
+// arrives from a job posting that names the employer and nothing else.
+//
+// z.object strips any field not declared below out of the parsed result, so an
+// extra key in the request never reaches the service or the database.
 export const newCompanyRules = z.object({
   name: z.string().min(1),
   domain: z.string().optional(),

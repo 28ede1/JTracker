@@ -1,14 +1,20 @@
-// supertest is a library that lets your tests make real HTTP requests to your
-// application without starting a server. example: request(app).post("/opportunities")
+// ---------------------------------------------------------------------------
+// Opportunity route tests
+//
+// The whole path end to end: a real HTTP request, through the validation rules
+// and the service, to the real database and back. supertest drives the app
+// object directly, so nothing has to be listening on a port.
+//
+// opportunity.validation.test.ts covers the rules on their own and runs in
+// milliseconds. These are the slower cases worth paying a round trip for,
+// because they prove the wiring rather than the rules.
+//
+// No credentials are needed. Postings are shared reference data mounted without
+// requireAuth, which is why this file has no log-in step and the contact and
+// user route tests do.
+// ---------------------------------------------------------------------------
 
 import request from "supertest";
-
-// describe: groups related tests
-// it: defines a test case
-// expect: checks expected results
-// afterEach: runs cleanup after each test
-// beforeAll: runs once before the first test in the file
-
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { createApp } from "../../app.ts";

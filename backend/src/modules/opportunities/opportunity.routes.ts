@@ -3,6 +3,9 @@
 //
 // Handles the web side: read the request, check the input, call the service,
 // send a response. No database code here.
+//
+// Postings are shared reference data, the same feed for everybody, so these are
+// mounted without requireAuth and nothing here is scoped to a user.
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";

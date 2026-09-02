@@ -1,8 +1,13 @@
-import { describe, expect, it } from "vitest";
+// ---------------------------------------------------------------------------
+// Company validation tests
+//
+// No database and no HTTP here. These call the rule sets directly, which is
+// what makes them fast enough to run on every save. The route tests cover the
+// same rules end to end, but only for the handful of cases worth paying a
+// network round trip for.
+// ---------------------------------------------------------------------------
 
-// describe, function used to group related tests
-// it, defines an individual test
-// expect, checks that the result is what you expect
+import { describe, expect, it } from "vitest";
 
 import { companyQueryRules, newCompanyRules } from "./company.validation.ts";
 
@@ -94,9 +99,8 @@ describe("newCompanyRules", () => {
   });
 });
 
-// These run without a database or a server, because the rules are just a
-// function over a plain object. That is the payoff for keeping them in their
-// own file instead of inline in the route.
+// Express hands over every query parameter as text, so each test feeds strings
+// in and checks the parsed value that comes out.
 describe("companyQueryRules", () => {
   it("fills in defaults when no parameters are given", () => {
     const result = companyQueryRules.safeParse({});
