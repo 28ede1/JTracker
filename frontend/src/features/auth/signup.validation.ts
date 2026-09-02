@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Sign-up input validation
 //
-// The one place that decides what counts as an acceptable email and password.
+// The one place that decides what counts as an acceptable email password and user.
 // The form calls it before touching the network, so a typo is reported
 // instantly instead of after a round trip.
 //
