@@ -1,1 +1,7 @@
 CLAUDE.md
+
+# Dependencies and build caches at the repo root.
+# The backend and frontend have their own .gitignore files, but the root
+# was uncovered, which let a Vitest cache file get committed.
+node_modules/
+.DS_Store
