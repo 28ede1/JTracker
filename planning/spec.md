@@ -27,3 +27,16 @@ Application
 FitAnalysis
 ResearchReport
 Alert
+
+# Tech Stack
+
+PostgreSQL (Relational DB)
+Express (Routing, Middleware (auth checks, logging, parsing JSON bodies, error handling), Request/Response helpers)
+Node (Runs JavaScript/TypeScript outside of the browser)
+React (Frontend)
+Supabase (Hosts PostgreSQL DB, handles Authentication)
+Prisma (DB access, schema migrations)
+TypeScript (Catches type errors)
+Zod (TypeScript library for validating input)
+Vitest (Organizes and runs tests, provides assertions)
+Supertest (Tests routes)
