@@ -455,16 +455,18 @@ describe.skipIf(!email || !password)("user routes", () => {
       expect(response.body.username).toBe(testName("spaced"));
     });
 
-    // Provisioning runs once, just after sign-up. A second call hits the
-    // primary key, which Prisma reports as P2002 and errorHandler turns into a
-    // 409. Without that mapping the client would see a bare 500.
-    it("returns 409 when the user has already been created", async () => {
+    // Provisioning is safe to repeat: the browser calls it on every new session.
+    // The second call finds the row already there, changes nothing, and returns it.
+    // The empty update in ensureUser is what stops a repeat call from renaming you.
+    it("returns the existing row without renaming it when called twice", async () => {
       await post({ username: testName("first") });
 
       const response = await post({ username: testName("second") });
 
-      expect(response.status).toBe(409);
+      expect(response.status).toBe(201);
+      expect(response.body.username).toBe(testName("first"));
     });
+
 
     // Username is unique across the whole table, so this is the other way the
     // same 409 is reached, and it is the one a real person will hit.
