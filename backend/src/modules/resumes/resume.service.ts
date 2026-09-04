@@ -6,7 +6,13 @@
 // That is why the caller passes plain values rather than handing over req.file.
 //
 // A resume lives in two places at once: the bytes go to Supabase Storage, and a
-// Resume row records where they went.
+// Resume row records where they went. Those are separate systems, so no single
+// transaction covers both and either half can fail on its own.
+//
+// That is what decides the order below. The file goes up first, because a
+// stored file that no row names is invisible to the app and can be cleaned up
+// later, while a row naming a file that was never stored breaks every read of
+// it. When both cannot succeed, fail toward the state that is still repairable.
 // ---------------------------------------------------------------------------
 
 import { randomUUID } from "node:crypto";

@@ -1,13 +1,24 @@
 // ---------------------------------------------------------------------------
 // Resume routes
 //
-// Handles the web side: read the request, check the input, call the service,
-// validates according to multer configs set it resumeUpload
-// send a response. No database code here.
+// The entry point for the resume module. app.ts mounts this router at /resumes
+// behind requireAuth, so by the time a handler below runs, the caller's token
+// has already been verified and req.userId holds who they are.
 //
-// Every route in this file is mounted behind requireAuth in app.ts, and every
-// call below passes req.userId to the service. Resumes belong to one person,
-// so that argument is what keeps one user's rows out of another's responses.
+// This file is the web side only: read the request, check the input, call the
+// service, send a response. No storage or database code lives here.
+//
+// The rest of the module, in the order a request passes through it:
+//
+//   resume.routes.ts             this file, the HTTP layer
+//   resume.upload.middleware.ts  pulls the uploaded file off the request
+//   resume.validation.ts         checks the text fields the client typed
+//   resume.service.ts            stores the bytes and writes the database row
+//
+// One rule shapes all four. Of everything arriving on this request, the label
+// is the only value the client types. The user id comes from the verified
+// token, the format and size are measured from the file itself, and the storage
+// path is generated inside the service.
 // ---------------------------------------------------------------------------
 
 
@@ -16,11 +27,7 @@ import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
 
 import { createResume } from "./resume.service.ts";
-import {
-  MAX_RESUME_BYTES,
-  MIME_TO_FILE_TYPE,
-  parseResumeFile,
-} from "./resume.upload.middleware.ts";
+import { MAX_RESUME_BYTES, MIME_TO_FILE_TYPE, parseResumeFile, } from "./resume.upload.middleware.ts";
 import { newResumeRules } from "./resume.validation.ts";
 
 export const resumeRoutes = Router();
