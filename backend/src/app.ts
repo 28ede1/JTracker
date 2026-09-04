@@ -16,6 +16,7 @@ import { prisma } from "./lib/prisma.ts";
 import { companyRoutes } from "./modules/companies/company.routes.ts";
 import { contactRoutes } from "./modules/contacts/contact.routes.ts";
 import { opportunityRoutes } from "./modules/opportunities/opportunity.routes.ts";
+import { resumeRoutes } from "./modules/resumes/resume.routes.ts";
 import { publicUserRoutes } from "./modules/users/user.public.routes.ts";
 import { userRoutes } from "./modules/users/user.routes.ts";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler.ts";
@@ -83,8 +84,10 @@ export function createApp() {
 
   // Contacts belong to one person, so requireAuth runs first. It checks that a
   // valid session exists and puts that user's id on the request, which is what
-  // every query in contact.service.ts filters by.
+  // every query in contact.service.ts filters by. Same thing with Resumes.
   app.use("/contacts", requireAuth, contactRoutes);
+
+  app.use("/resumes", requireAuth, resumeRoutes)
 
   // -------------------------------------------------------------------------
   // Two routers on one "/users" prefix
