@@ -19,3 +19,17 @@ import { z } from "zod";
 export const newResumeRules = z.object({
   label: z.string().trim().min(1).max(100),
 });
+
+// The id in DELETE /resumes/:id.
+//
+// A value out of the URL is client input like any other, and checking its shape
+// here means the service is never handed something that cannot be an id. It
+// also saves a database round trip for junk like /resumes/hello.
+export const resumeIdRules = z.guid();
+
+// Query string of GET /resumes
+export const resumeQueryRules = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  label: z.string().trim().max(100).optional()
+});

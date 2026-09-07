@@ -26,9 +26,9 @@ import { Router } from "express";
 import type { NextFunction, Request, Response } from "express";
 import multer from "multer";
 
-import { createResume } from "./resume.service.ts";
+import { createResume, deleteResume, listResumes } from "./resume.service.ts";
 import { MAX_RESUME_BYTES, MIME_TO_FILE_TYPE, parseResumeFile, } from "./resume.upload.middleware.ts";
-import { newResumeRules } from "./resume.validation.ts";
+import { newResumeRules, resumeIdRules, resumeQueryRules} from "./resume.validation.ts";
 
 export const resumeRoutes = Router();
 
@@ -44,14 +44,36 @@ function handleUploadError(
   res: Response,
   next: NextFunction,
 ) {
-  if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
-    const megabytes = MAX_RESUME_BYTES / (1024 * 1024);
-    res.status(413).json({ error: `Resume must be ${megabytes} MB or smaller` });
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      const megabytes = MAX_RESUME_BYTES / (1024 * 1024);
+      res.status(413).json({ error: `Resume must be ${megabytes} MB or smaller` });
+      return;
+    }
+
+    // Every other MulterError means the upload itself was malformed, most
+    // often a file sent on a field name other than "resume". Multer throws for
+    // that rather than dropping it the way fileFilter drops a wrong format, so
+    // without this line it falls through to errorHandler and the client's own
+    // mistake comes back as a 500.
+    res.status(400).json({ error: "Invalid resume upload" });
     return;
   }
 
   next(err);
 }
+
+resumeRoutes.get("/", async (req, res) => {
+  const result = resumeQueryRules.safeParse(req.query);
+
+  if (!result.success) {
+    res.status(400).json({ error: "Invalid query parameters"})
+    return;
+  }
+
+  const resumes = await listResumes(req.userId!, result.data);
+  res.json(resumes);
+})
 
 resumeRoutes.post(
   "/",
@@ -62,7 +84,7 @@ resumeRoutes.post(
     // a silent drop rather than an error.
     if (!req.file) {
       res.status(400).json({
-        error: "A PDF or DOCX resume is required",
+        error: "A PDF resume is required",
       });
 
       return;
@@ -93,6 +115,31 @@ resumeRoutes.post(
     res.status(201).json(resume);
   },
 );
+
+resumeRoutes.delete("/:id", async (req, res) => {
+  // No multer here. A DELETE carries no file and no body, so the only client
+  // input on the whole request is the id sitting in the URL.
+  const id = resumeIdRules.safeParse(req.params.id);
+
+  if (!id.success) {
+    res.status(400).json({ error: "Invalid resume id" });
+    return;
+  }
+
+  const deleted = await deleteResume(req.userId!, id.data);
+
+  // False covers both "no such resume" and "not yours". They share one answer
+  // on purpose: a different response for the second would let someone confirm
+  // which ids are real, one guess at a time.
+  if (!deleted) {
+    res.status(404).json({ error: "Resume not found" });
+    return;
+  }
+
+  // 204 means "done, and there is nothing to send back". The row is gone, so
+  // there is no object left to return, and .end() sends the status with no body.
+  res.status(204).end();
+});
 
 // Below the routes, because Express reads this list top to bottom and an error
 // handler only gets a turn once something above it has failed.

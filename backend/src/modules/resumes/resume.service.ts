@@ -13,6 +13,10 @@
 // stored file that no row names is invisible to the app and can be cleaned up
 // later, while a row naming a file that was never stored breaks every read of
 // it. When both cannot succeed, fail toward the state that is still repairable.
+//
+// Deleting follows the same rule and therefore runs in the opposite order: the
+// row goes first, then the bytes. Both directions leave the same survivable
+// mess if the second half fails, which is a file with no row pointing at it.
 // ---------------------------------------------------------------------------
 
 import { randomUUID } from "node:crypto";
@@ -43,6 +47,40 @@ type NewResume = {
   fileSize: number;
   buffer: Buffer;
 };
+
+type ListResumeOptions = {
+  page: number;
+  limit: number;
+  label?: string;
+}
+
+export function listResumes(
+  userId: string,
+  { page, limit, label }: ListResumeOptions,
+) {
+  const skip = (page - 1) * limit;
+
+  return prisma.resume.findMany({
+    where: {
+      userId,
+      label,
+    },
+    select: {
+      id: true,
+      label: true,
+      fileType: true,
+      fileSize: true,
+      parseStatus: true,
+      createdAt: true,
+    },
+    orderBy: [
+      { createdAt: "desc" },
+      { label: "asc" },
+    ],
+    skip,
+    take: limit,
+  });
+}
 
 // userId stays a separate argument for the same reason as in contact.service.ts:
 // the object is the client's wish list, and userId comes from the verified
@@ -83,9 +121,69 @@ export async function createResume(
   try {
     return await prisma.resume.create({
       data: { label, filePath, fileType, fileSize, userId },
+      select: {
+        id: true,
+        label: true,
+        fileType: true,
+        fileSize: true,
+        parseStatus: true,
+        createdAt: true,
+      },
     });
   } catch (error) {
     await supabaseAdmin.storage.from(RESUME_BUCKET).remove([filePath]);
     throw error;
   }
+}
+
+export async function deleteResume(userId: string, id: string) {
+  // Read before deleting, because the row is the only record of where the bytes
+  // live. deleteMany reports how many rows it removed but does not hand back
+  // their contents, so once it has run, filePath is unrecoverable.
+  const resume = await prisma.resume.findFirst({
+    where: { id, userId },
+    select: { filePath: true },
+  });
+
+  if (!resume) return false;
+
+  // deleteMany rather than delete, for the same reason as in
+  // application.service.ts: delete only accepts unique fields in its where, so
+  // it would remove a row by id no matter who owns it. deleteMany takes any
+  // filter, which keeps userId inside the query itself.
+  //
+  // Keeping userId here rather than trusting the lookup above also settles a
+  // race. If two requests delete the same resume at once, both can pass the
+  // findFirst, but only one deleteMany reports a count of 1. The other returns
+  // false and never touches storage, so the file is removed exactly once.
+  const result = await prisma.resume.deleteMany({
+    where: { id, userId },
+  });
+
+  if (result.count !== 1) return false;
+
+  // The row is gone, so nothing in the app can reach this file any more. Only
+  // now are the bytes removed.
+  //
+  // remove takes an array because Storage can delete several paths in one call.
+  // Here it is always one path.
+  const removal = await supabaseAdmin.storage
+    .from(RESUME_BUCKET)
+    .remove([resume.filePath]);
+
+  // Deliberately not thrown. From the caller's side the delete succeeded: the
+  // resume is gone from the app and cannot be listed or downloaded again.
+  // Turning this into a 500 would tell the user their delete failed when it did
+  // not, and a retry would then answer 404 and still leave the file behind.
+  //
+  // What is left is an unreferenced file in the bucket, so the path is logged
+  // where the server can see it and a cleanup job can find it later.
+  if (removal.error) {
+    console.error("Resume row deleted but file remains in storage", {
+      filePath: resume.filePath,
+      error: removal.error,
+    });
+  }
+
+  return true;
 }

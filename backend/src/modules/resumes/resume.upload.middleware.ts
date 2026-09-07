@@ -24,15 +24,13 @@ import { FileType } from "../../../generated/prisma/enums.ts";
 export const MAX_RESUME_BYTES = 5 * 1024 * 1024; // 5 MB
 
 // Browsers describe an uploaded file using a MIME type. This map accepts PDF
-// and DOCX files and converts their MIME types into the Prisma FileType values
+// and converts their MIME types into the Prisma FileType values
 // stored in the Resume database row.
 export const MIME_TO_FILE_TYPE = {
   "application/pdf": FileType.PDF,
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-    FileType.DOCX,
 } as const;
 
-const ALLOWED_MIME_TYPES: string[] = Object.keys(MIME_TO_FILE_TYPE);
+export const ALLOWED_MIME_TYPES: string[] = Object.keys(MIME_TO_FILE_TYPE);
 
 export const parseResumeFile = multer({
   // Holds the uploaded file's raw bytes temporarily in server memory.
@@ -42,7 +40,7 @@ export const parseResumeFile = multer({
   // Stops the upload and reports an error when the file exceeds 5 MB.
   limits: { fileSize: MAX_RESUME_BYTES },
 
-  // Accepts only files reported by the browser as PDF or DOCX.
+  // Accepts only files reported by the browser as PDF.
   // Because the browser supplies this value, this is only a basic type check.
   fileFilter: (_req, file, callback) => {
     callback(null, ALLOWED_MIME_TYPES.includes(file.mimetype));
