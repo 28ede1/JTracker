@@ -16,6 +16,7 @@ import { prisma } from "./lib/prisma.ts";
 import { companyRoutes } from "./modules/companies/company.routes.ts";
 import { contactRoutes } from "./modules/contacts/contact.routes.ts";
 import { opportunityRoutes } from "./modules/opportunities/opportunity.routes.ts";
+import { researchReportRoutes } from "./modules/research-reports/research-report.routes.ts";
 import { resumeRoutes } from "./modules/resumes/resume.routes.ts";
 import { applicationRoutes } from "./modules/applications/application.routes.ts";
 import { publicUserRoutes } from "./modules/users/user.public.routes.ts";
@@ -78,11 +79,13 @@ export function createApp() {
   });
 
 
-  // Companies and opportunities are shared reference data, the same for
+  // Companies and opportunities and research reports are shared reference data, the same for
   // everybody, so neither is mounted behind a guard.
   app.use("/companies", companyRoutes);
 
   app.use("/opportunities", opportunityRoutes);
+
+  app.use("/research-reports", researchReportRoutes);
 
   // Contacts belong to one person, so requireAuth runs first. It checks that a
   // valid session exists and puts that user's id on the request, which is what
