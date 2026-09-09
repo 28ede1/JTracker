@@ -57,14 +57,14 @@ researchReportRoutes.delete("/:id", async (req, res) => {
     return;
   }
 
-  const researchReport = await deleteResearchReport(result.data);
+  const deleted = await deleteResearchReport(result.data);
 
-  if (!researchReport) {
+  if (!deleted) {
     res.status(404).json({ error: "Research report not found"})
     return;
   }
 
-  res.json(researchReport);
+  res.status(204).end();
 });
 
 researchReportRoutes.post("/", async (req, res) => {

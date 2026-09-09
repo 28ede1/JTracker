@@ -61,13 +61,12 @@ export function findResearchReport(id: string) {
   });
 }
 
-export function deleteResearchReport(id: string) {
-  return prisma.researchReport.delete({
-    where: {
-      id,
-    },
-    ...researchReportPreview,
+export async function deleteResearchReport(id: string) {
+  const result = await prisma.researchReport.deleteMany({
+    where: { id },
   });
+
+  return result.count === 1;
 }
 
 export function createResearchReport(data: NewResearchReport) {
