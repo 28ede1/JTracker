@@ -13,6 +13,7 @@ import express from "express";
 import morgan from "morgan";
 
 import { prisma } from "./lib/prisma.ts";
+import { alertRoutes } from "./modules/alerts/alerts.routes.ts";
 import { companyRoutes } from "./modules/companies/company.routes.ts";
 import { contactRoutes } from "./modules/contacts/contact.routes.ts";
 import { opportunityRoutes } from "./modules/opportunities/opportunity.routes.ts";
@@ -90,7 +91,7 @@ export function createApp() {
   // Contacts belong to one person, so requireAuth runs first. It checks that a
   // valid session exists and puts that user's id on the request, which is what
   // every query in contact.service.ts filters by. Same thing with Resumes, Applications,
-  // FitAnalyses
+  // FitAnalyses, Alerts
   app.use("/contacts", requireAuth, contactRoutes);
 
   app.use("/resumes", requireAuth, resumeRoutes);
@@ -98,6 +99,8 @@ export function createApp() {
   app.use("/applications", requireAuth, applicationRoutes);
 
   app.use("/fit-analyses", requireAuth, fitAnalysisRoutes);
+  
+  app.use("/alerts", requireAuth, alertRoutes);
 
   // -------------------------------------------------------------------------
   // Two routers on one "/users" prefix
