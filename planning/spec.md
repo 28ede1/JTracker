@@ -34,7 +34,7 @@ Alert
 
 # Core Features
 
-1) Opportunity Discovery (Jobs, Internships, Virtual Events, In-Person Events & Hackathons)
+1) Opportunity Discovery (Jobs, Internships, Virtual Events, In-Person Events & Hackathons, Fellowships, Research)
 2) Resume & Job Fit Analysis 
 3) Application Status Tracking
 4) Contact / Networking Management
