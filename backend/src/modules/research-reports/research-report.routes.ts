@@ -1,11 +1,10 @@
 // ---------------------------------------------------------------------------
-// Research Report Routes
+// Research Report routes
 //
-// Handles the web side: read the request, check the input, call the service,
-// send a response. No database code here.
-//
-// Research reports are shared reference data, the same for everybody, so these are
-// mounted without requireAuth and nothing here is scoped to a user.
+// Reads the request, and if input is valid, calls the proper service and sends
+// the response back to the client. Research reports are shared reference data,
+// the same rows for everybody, so these are mounted without requireAuth and
+// nothing here is scoped to a user.
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";
@@ -17,7 +16,6 @@ import { newResearchReportRules, researchReportIdRules, researchReportQueryRules
 export const researchReportRoutes = Router();
 
 researchReportRoutes.get("/", async (req, res) => {
-  // A query string is client input, so it gets checked exactly like a body.
   const result = researchReportQueryRules.safeParse(req.query);
 
   if (!result.success) {

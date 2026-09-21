@@ -1,28 +1,18 @@
 // ---------------------------------------------------------------------------
-// User input validation
+// User validation
 //
-// The trust boundary for the user module. Routes call these rule sets,
-// services never do, so a service always receives values that are already
-// valid.
+// Validates client input, and defines the object shape of what a new row should
+// look like. Normalizes input and rejects anything incorrectly formatted.
+// Routes call these.
 //
-// The client should never be able to send an id and change which row is
-// written, because the id comes from the verified token instead. strict() is
-// used here rather than the plain object rule the other modules use, so a body
-// carrying an id is rejected outright rather than silently stripped. A refusal
-// tells whoever sent it that they were doing something that will never work.
+// strict() rather than the plain object rule the other modules use, so a body
+// carrying an id is refused outright instead of silently stripped.
 // ---------------------------------------------------------------------------
 
 import { z } from 'zod';
 
-// ---------------------------------------------------------------------------
-// What a username is
-//
-// Defined once and reused by every rule set below. The availability check has
-// to accept exactly the names that create and update accept, otherwise the
-// sign-up form would call a name free and then fail on submit. Sharing the rule
-// makes that impossible rather than merely unlikely.
-// ---------------------------------------------------------------------------
-
+// Defined once, so the availability check accepts exactly the names create and
+// update accept.
 export const usernameRules = z.string().trim().min(1).max(50)
 
 export const newUserRules = z
@@ -37,9 +27,7 @@ export const updateUserRules = z
   })
   .strict()
 
-// The query string of GET /users/availability. Parameters arrive as text and a
-// missing ?username= arrives as undefined, so both are refused here rather than
-// reaching the database as an empty search.
+// The query string of GET /users/availability.
 export const usernameQueryRules = z.object({
   username: usernameRules,
 })

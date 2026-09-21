@@ -3,11 +3,12 @@
 //
 // The whole path end to end: a real HTTP request, through the validation rules
 // and the service, to the real database and back. supertest drives the app
-// object directly, so nothing has to be listening on a port.
+// object directly, so nothing has to listen on a port.
 //
-// company.validation.test.ts covers the rules on their own and runs in
-// milliseconds. These are the slower cases worth paying a round trip for,
-// because they prove the wiring rather than the rules.
+// Two things only this file can prove: that pagination and case-insensitive
+// search behave against real rows rather than against a schema, and that a
+// malformed query string comes back as a 400 instead of reaching Prisma and
+// becoming a 500.
 // ---------------------------------------------------------------------------
 
 import request from "supertest";
@@ -18,24 +19,8 @@ import { prisma } from "../../lib/prisma.ts";
 
 const app = createApp();
 
-// ---------------------------------------------------------------------------
-// Cleanup
-//
-// These tests run against the development database, so they have to remove
-// exactly the rows they create and nothing else. Every company made here is
-// named with the prefix below, which lets a single query find all of them.
-//
-// Deleting by name instead of by recorded id matters for two reasons. A test
-// that fails before it can record an id still gets cleaned up, and rows left
-// behind by a run that was interrupted partway through get swept on the next
-// start instead of piling up.
-// ---------------------------------------------------------------------------
-
 const TEST_PREFIX = "Test ";
 
-// Builds a company name that the cleanup query is guaranteed to match. Using
-// this instead of a plain string stops a future test from inventing a name
-// that cleanup does not know to look for.
 function testName(label: string) {
   return `${TEST_PREFIX}${label}`;
 }
@@ -46,10 +31,8 @@ function deleteTestCompanies() {
   });
 }
 
-// Clears strays from any earlier run that ended before it could clean up.
 beforeAll(deleteTestCompanies);
 
-// Stops each test from seeing rows created by the test before it.
 afterEach(deleteTestCompanies);
 
 describe("POST /companies", () => {
@@ -61,7 +44,6 @@ describe("POST /companies", () => {
     expect(response.status).toBe(201);
     expect(response.body.name).toBe(testName("Stripe"));
 
-    // A generated id proves the row really reached the database.
     expect(response.body.id).toBeDefined();
   });
 
@@ -97,15 +79,10 @@ describe("GET /companies", () => {
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
 
-    // Checks that this specific company is present rather than checking the
-    // array length, because other rows may exist in the database.
     const names = response.body.map((company: { name: string }) => company.name);
     expect(names).toContain(testName("Listed"));
   });
 
-  // Only the size is checked. Which company comes back depends on rows this
-  // test did not create, because the list is sorted by name across the whole
-  // table, so asserting a name here would pass only while the table is empty.
   it("returns at most limit companies", async () => {
     await request(app).post("/companies").send({ name: testName("Company A") });
     await request(app).post("/companies").send({ name: testName("Company B") });
@@ -119,9 +96,6 @@ describe("GET /companies", () => {
     expect(response.body.length).toBe(1);
   });
 
-  // Adding q is what makes this one deterministic. The search narrows the
-  // result to rows this test created, so the exact name on each page can be
-  // asserted instead of just the count.
   it("returns the next rows when the page increases", async () => {
     await request(app).post("/companies").send({ name: testName("Company A") });
     await request(app).post("/companies").send({ name: testName("Company B") });
@@ -168,8 +142,6 @@ describe("GET /companies search", () => {
     expect(names).not.toContain(testName("Unrelated"));
   });
 
-  // Without mode "insensitive" in the service, this test fails and real users
-  // typing lowercase find nothing.
   it("matches regardless of letter case", async () => {
     await request(app).post("/companies").send({ name: testName("Casing") });
 
@@ -192,8 +164,6 @@ describe("GET /companies search", () => {
     expect(response.body).toEqual([]);
   });
 
-  // A cleared search box sends q as an empty string, which must list everything
-  // rather than fail.
   it("ignores an empty search term", async () => {
     await request(app).post("/companies").send({ name: testName("Listed") });
 
@@ -206,9 +176,6 @@ describe("GET /companies search", () => {
   });
 });
 
-// A malformed query string is the client's mistake, so it has to come back as
-// 400. Before the schema existed, a negative page reached Prisma and became a
-// 500, which reads in the logs like a server defect.
 describe("GET /companies validation", () => {
   it("returns 400 when page is below 1", async () => {
     const response = await request(app).get("/companies").query({ page: -5 });

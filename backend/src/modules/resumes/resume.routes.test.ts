@@ -1,5 +1,15 @@
 // ---------------------------------------------------------------------------
 // Resume route tests
+//
+// The whole path end to end: a real HTTP request, through requireAuth and
+// Multer and the validation rules and the service, to the real database and
+// Supabase Storage and back. supertest drives the app object directly, so
+// nothing has to listen on a port.
+//
+// Two things only this file can prove: that the two halves of a resume, the row
+// and the stored bytes, stay in step through a create, a failed create and a
+// delete; and scoping, since a second account's rows have to exist to check
+// they never appear.
 // ---------------------------------------------------------------------------
 
 import { randomBytes, randomUUID } from "node:crypto";
@@ -19,29 +29,13 @@ const RESUME_BUCKET = "resumes";
 
 const app = createApp();
 
-// ---------------------------------------------------------------------------
-// Credentials
-//
-// Every route in this file sits behind requireAuth, so there is nothing to test
-// without a real signed-in user. When the two variables are missing the whole
-// file skips instead of failing, so a fresh clone still runs green.
-// See .env.example.
-// ---------------------------------------------------------------------------
-
 const email = process.env.TEST_USER_EMAIL;
 const password = process.env.TEST_USER_PASSWORD;
 
-// ---------------------------------------------------------------------------
-// Cleanup
-// 
-// In order to successfully clear all test data that was created (deleting 
-// resume from data model table AND supabase storage), you must
-// first get all filepaths from the test resumes in the resume table
-// then delete the rows, THEN remove the files from supabase storage.
-// If you flip the order you end up having no way to access the file paths
-// that tell you where the files are stored on supabase.
-// ---------------------------------------------------------------------------
-
+// A test resume exists in two places, so cleanup has to read the file paths out
+// of the rows before deleting them, and only then remove the files from
+// Storage. Flipping that order throws the paths away and leaves the files
+// behind with nothing left to say where they are.
 const TEST_PREFIX = "Test "
 function testName(label: string) {
     return `${TEST_PREFIX}${label}`;
@@ -50,7 +44,6 @@ function testName(label: string) {
 const OTHER_USER_PREFIX = "test-other-";
 
 async function deleteTestData() {
-    // applications first, they point at opportunities
     await prisma.application.deleteMany({
         where: { opportunity: { title: { startsWith: TEST_PREFIX } } },
     })
@@ -59,18 +52,15 @@ async function deleteTestData() {
         where: { title: { startsWith: TEST_PREFIX } },
     })
 
-    // get all file paths for deletion
     const resumes = await prisma.resume.findMany({
         where: { label: { startsWith: TEST_PREFIX}},
         select: { filePath: true },
     })
 
-    // delete rows
     await prisma.resume.deleteMany({
         where: {label: { startsWith: TEST_PREFIX}  }
     })
 
-    // bulk remove all filePaths
     if (resumes.length > 0) {
         const { error } = await supabaseAdmin.storage
         .from(RESUME_BUCKET)
@@ -86,15 +76,7 @@ async function deleteTestData() {
     });
 }
 
-// In case there are any folders added to supabase storage
-// that do not point at any resume row.
-
 async function deleteStrandedFiles(userId: string) {
-    // Each user's files live in a folder named after their id, so this reads one
-    // user's folder only. list() returns the short name of each object, such as
-    // "9f2c...pdf", not the full path, which is why the folder is put back in
-    // front of it below. 1000 is Storage's maximum for one call and far more than
-    // a test run ever creates.
     const { data: objects, error } = await supabaseAdmin.storage
       .from(RESUME_BUCKET)
       .list(userId, { limit: 1000 });
@@ -110,9 +92,6 @@ async function deleteStrandedFiles(userId: string) {
       select: { filePath: true },
     });
   
-    // A Set rather than an array because the filter below asks "is this path in
-    // here" once per stored file. A Set answers that in one step, while an array
-    // would be scanned from the start every time.
     const referenced = new Set(rows.map((row) => row.filePath));
   
     const stranded = objects
@@ -159,13 +138,6 @@ async function deleteStrandedFiles(userId: string) {
 
     afterEach(deleteTestData);
 
-    // defined in one place instead of rewriting the same request handlers
-    //
-    // These sit outside beforeAll, not inside it. A function declared inside a
-    // hook stops existing the moment that hook returns, so the tests below
-    // would not be able to see it. They read token at call time, which is why
-    // it is still an empty string up here.
-
     function get(path: string) {
     return request(app).get(path).set("Authorization", `Bearer ${token}`);
     }
@@ -173,15 +145,6 @@ async function deleteStrandedFiles(userId: string) {
     // POST /resumes carries a file, so it cannot use .send(). A file cannot
     // travel as JSON, so this request goes as multipart/form-data: a format
     // that splits the body into separate parts, one per value.
-    //
-    // .field adds a text part and .attach adds a file part. The name "resume"
-    // has to match parseResumeFile.single("resume") in the route, or Multer
-    // ignores the file and req.file arrives undefined.
-    //
-    // The mime type is never sent explicitly. Supertest infers it from the
-    // filename extension, so "resume.pdf" becomes application/pdf and
-    // "notes.txt" becomes text/plain. That inferred value is what fileFilter
-    // then accepts or rejects.
     function upload(label: string, bytes: Buffer, filename = "resume.pdf") {
     return request(app)
         .post("/resumes")
@@ -194,7 +157,6 @@ async function deleteStrandedFiles(userId: string) {
     return request(app).delete(path).set("Authorization", `Bearer ${token}`);
     }
 
-    // stands in for a second person using the app
     function otherUser() {
       return prisma.user.create({
         data: {
@@ -204,8 +166,6 @@ async function deleteStrandedFiles(userId: string) {
       });
     }
 
-    // there is no route for uploading as somebody else, so the service is
-    // called directly. the scoping tests need a real file in the bucket.
     async function otherUsersResume(label: string) {
       const other = await otherUser();
 
@@ -229,7 +189,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.body.label).toBe(testName("Backend v1"));
       });
 
-      // both are read from the file, never from the request body
       it("derives fileType and fileSize from the file", async () => {
         const bytes = randomBytes(1024);
 
@@ -245,14 +204,12 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.body.parseStatus).toBe("PENDING");
       });
 
-      // the service leaves filePath out of its select on purpose
       it("does not return the storage path", async () => {
         const response = await upload(testName("Hidden"), randomBytes(512));
 
         expect(response.body.filePath).toBeUndefined();
       });
 
-      // ownership comes from the token, never from the request
       it("saves the resume against the signed-in user, ignoring any userId sent", async () => {
         const response = await request(app)
           .post("/resumes")
@@ -298,7 +255,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.status).toBe(400);
       });
 
-      // multer only looks at the field named "resume"
       it("returns 400 when the file is sent under the wrong field name", async () => {
         const response = await request(app)
           .post("/resumes")
@@ -337,7 +293,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.status).toBe(201);
       });
 
-      // fileFilter drops a rejected file silently, so the route sees no file
       it("returns 400 for a text file", async () => {
         const response = await upload(testName("Text"), randomBytes(512), "notes.txt");
 
@@ -350,14 +305,12 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.status).toBe(400);
       });
 
-      // MIME_TO_FILE_TYPE only lists PDF, even though FileType has DOCX
       it("returns 400 for a docx file", async () => {
         const response = await upload(testName("Docx"), randomBytes(512), "resume.docx");
 
         expect(response.status).toBe(400);
       });
 
-      // the name says pdf but the declared type does not, and the type wins
       it("returns 400 when a pdf filename carries a non pdf content type", async () => {
         const response = await request(app)
           .post("/resumes")
@@ -371,7 +324,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.status).toBe(400);
       });
 
-      // without handleUploadError this comes back as a 500
       it("returns 413 when the file is one byte over the limit", async () => {
         const response = await upload(testName("Too Big"), randomBytes(MAX_RESUME_BYTES + 1));
 
@@ -384,7 +336,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.status).toBe(201);
       });
 
-      // the path is generated in the service, so nothing the client sent reaches it
       it("stores the file under a generated path, not the uploaded filename", async () => {
         const response = await upload(
           testName("Named"),
@@ -411,7 +362,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(one.filePath).not.toBe(two.filePath);
       });
 
-      // the row is only half the job, the bytes have to be in the bucket too
       it("puts the uploaded bytes in the bucket", async () => {
         const bytes = randomBytes(1024);
 
@@ -429,9 +379,10 @@ async function deleteStrandedFiles(userId: string) {
         expect(file.data?.size).toBe(bytes.length);
       });
 
-      // the upload happens before the insert, so a failed insert would leave the
-      // bytes behind with no row naming them. spyOn replaces prisma.resume.create
-      // for this test only, because a real insert failure cannot be arranged.
+      // The upload happens before the insert, so a failed insert would leave
+      // the bytes behind with no row naming them. spyOn replaces
+      // prisma.resume.create for this test only, because a real insert failure
+      // cannot be arranged.
       it("removes the uploaded file when the database insert fails", async () => {
         const before = await supabaseAdmin.storage
           .from(RESUME_BUCKET)
@@ -454,7 +405,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(after.data?.length).toBe(before.data?.length);
       });
 
-      // validation runs before the service, so nothing should reach storage
       it("uploads nothing when the label is invalid", async () => {
         const before = await supabaseAdmin.storage
           .from(RESUME_BUCKET)
@@ -482,7 +432,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.body.map((resume: { id: string }) => resume.id)).toContain(created.body.id);
       });
 
-      // the whole reason listResumes takes a userId
       it("does not return another user's resume", async () => {
         const theirs = await otherUsersResume("Not Mine");
         const mine = await upload(testName("Mine"), randomBytes(512));
@@ -530,7 +479,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(ids).not.toContain(other.body.id);
       });
 
-      // the filter is an exact match, not a search
       it("does not match a partial label", async () => {
         const created = await upload(testName("Backend SWE v3"), randomBytes(512));
 
@@ -539,8 +487,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.body.map((resume: { id: string }) => resume.id)).not.toContain(created.body.id);
       });
 
-      // createdAt is set by the database, so it is rewritten here to make the
-      // expected order certain instead of depending on two writes landing apart
       it("sorts by newest first", async () => {
         const older = await upload(testName("Older"), randomBytes(512));
         const newer = await upload(testName("Newer"), randomBytes(512));
@@ -608,11 +554,9 @@ async function deleteStrandedFiles(userId: string) {
         expect(stored).toBeNull();
       });
 
-      // a gone row with a surviving file means the document was never destroyed
       it("removes the stored file as well as the row", async () => {
         const created = await upload(testName("Erased"), randomBytes(512));
 
-        // read the path first, the row is the only record of where the bytes are
         const stored = await prisma.resume.findUniqueOrThrow({
           where: { id: created.body.id },
         });
@@ -647,7 +591,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(response.status).toBe(404);
       });
 
-      // deleteMany filters by userId, so a guessed id matches nothing
       it("returns 404 for another user's resume and leaves the row in place", async () => {
         const theirs = await otherUsersResume("Theirs");
 
@@ -660,7 +603,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(stored).not.toBeNull();
       });
 
-      // the 404 alone would not prove the storage half was skipped
       it("leaves another user's file in storage", async () => {
         const theirs = await otherUsersResume("Their File");
 
@@ -673,7 +615,6 @@ async function deleteStrandedFiles(userId: string) {
         expect(file.error).toBeNull();
       });
 
-      // Application.resumeId is onDelete: SetNull, so the application survives
       it("clears the resume from an application that pointed at it", async () => {
         const created = await upload(testName("Linked"), randomBytes(512));
 

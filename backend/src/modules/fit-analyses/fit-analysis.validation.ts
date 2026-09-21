@@ -1,14 +1,15 @@
 // ---------------------------------------------------------------------------
-// Fit Analysis input validation
+// Fit Analysis validation
 //
-// The trust boundary for the Fit Analyses module. Routes call these rule sets,
-// services never do, so a service always receives values that are already valid.
+// Validates client input, and defines the object shape of what a new row should
+// look like. Normalizes input and rejects anything incorrectly formatted.
+// Routes call these.
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
 
-// the rest of the fields will be updated by the AI call directly, 
-// using prisma operations
+// The body of POST /fit-analyses. The client only names what to compare: score,
+// summary, strengths, gaps and model are written later by the AI call.
 export const newFitAnalysisRules = z.object({
     resumeId: z.guid(),
     opportunityId: z.guid(),

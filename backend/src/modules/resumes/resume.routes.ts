@@ -1,24 +1,13 @@
 // ---------------------------------------------------------------------------
 // Resume routes
 //
-// The entry point for the resume module. app.ts mounts this router at /resumes
-// behind requireAuth, so by the time a handler below runs, the caller's token
-// has already been verified and req.userId holds who they are.
+// Reads the request, and if input is valid, calls the proper service and sends
+// the response back to the client. Mounted behind requireAuth in app.ts, so
+// req.userId is already verified by the time a handler runs.
 //
-// This file is the web side only: read the request, check the input, call the
-// service, send a response. No storage or database code lives here.
-//
-// The rest of the module, in the order a request passes through it:
-//
-//   resume.routes.ts             this file, the HTTP layer
-//   resume.upload.middleware.ts  pulls the uploaded file off the request
-//   resume.validation.ts         checks the text fields the client typed
-//   resume.service.ts            stores the bytes and writes the database row
-//
-// One rule shapes all four. Of everything arriving on this request, the label
-// is the only value the client types. The user id comes from the verified
-// token, the format and size are measured from the file itself, and the storage
-// path is generated inside the service.
+// A POST passes through the upload middleware first, so req.file already exists
+// by the time a handler reads it. Of everything on that request, the label is
+// the only value the client types.
 // ---------------------------------------------------------------------------
 
 
@@ -33,10 +22,7 @@ import { newResumeRules, resumeIdRules, resumeQueryRules} from "./resume.validat
 export const resumeRoutes = Router();
 
 // Express tells an error handler apart from normal middleware by counting
-// parameters: four means error handler. Registered on the router below, after
-// the routes, so it sees anything they passed along with next(err).
-//
-// Without it an oversized file reaches errorHandler, matches nothing there, and
+// parameters: four means error handler. Without this one, an oversized file
 // comes back as a generic 500 for what is really the client's mistake.
 function handleUploadError(
   err: unknown,
@@ -51,11 +37,8 @@ function handleUploadError(
       return;
     }
 
-    // Every other MulterError means the upload itself was malformed, most
-    // often a file sent on a field name other than "resume". Multer throws for
-    // that rather than dropping it the way fileFilter drops a wrong format, so
-    // without this line it falls through to errorHandler and the client's own
-    // mistake comes back as a 500.
+    // Every other MulterError means the upload itself was malformed, most often
+    // a file sent on a field name other than "resume".
     res.status(400).json({ error: "Invalid resume upload" });
     return;
   }
@@ -79,9 +62,8 @@ resumeRoutes.post(
   "/",
   parseResumeFile.single("resume"),
   async (req, res) => {
-    // Multer puts the uploaded file here. It is undefined when no file part was
-    // sent, and also when fileFilter rejected the format, because rejecting is
-    // a silent drop rather than an error.
+    // Multer puts the uploaded file here. It is undefined when no file was sent,
+    // and also when fileFilter rejected the format, since that is a silent drop.
     if (!req.file) {
       res.status(400).json({
         error: "A PDF resume is required",
@@ -99,8 +81,7 @@ resumeRoutes.post(
       return;
     }
 
-    // Derived from the file, never read from the body. fileFilter already
-    // rejected anything outside this map, so a miss cannot happen here.
+    // Derived from the file, never read from the body.
     const fileType =
       MIME_TO_FILE_TYPE[req.file.mimetype as keyof typeof MIME_TO_FILE_TYPE];
 
@@ -117,8 +98,6 @@ resumeRoutes.post(
 );
 
 resumeRoutes.delete("/:id", async (req, res) => {
-  // No multer here. A DELETE carries no file and no body, so the only client
-  // input on the whole request is the id sitting in the URL.
   const id = resumeIdRules.safeParse(req.params.id);
 
   if (!id.success) {
@@ -128,19 +107,13 @@ resumeRoutes.delete("/:id", async (req, res) => {
 
   const deleted = await deleteResume(req.userId!, id.data);
 
-  // False covers both "no such resume" and "not yours". They share one answer
-  // on purpose: a different response for the second would let someone confirm
-  // which ids are real, one guess at a time.
   if (!deleted) {
     res.status(404).json({ error: "Resume not found" });
     return;
   }
 
-  // 204 means "done, and there is nothing to send back". The row is gone, so
-  // there is no object left to return, and .end() sends the status with no body.
   res.status(204).end();
 });
 
-// Below the routes, because Express reads this list top to bottom and an error
-// handler only gets a turn once something above it has failed.
+// Below the routes, because Express reads this list top to bottom.
 resumeRoutes.use(handleUploadError);

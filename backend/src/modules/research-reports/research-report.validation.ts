@@ -1,30 +1,26 @@
 // ---------------------------------------------------------------------------
-// Research Report input validation
+// Research Report validation
 //
-// The trust boundary for the research report module.
-//
-// Each rule set rejects bad input, converts text into real types, and strips
-// undeclared fields. Routes call them, services never do, so a service always
-// receives values that are already valid.
+// Validates client input, and defines the object shape of what a new row should
+// look like. Normalizes input and rejects anything incorrectly formatted.
+// Routes call these.
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
 
 import { ReportType } from "../../../generated/prisma/enums.ts";
 
-// The body of POST /research-reports..
-// Everything else on the ResearchReport model is intentionally absent.
-// contentMd, sources and model are written by the service after the AI call
-// returns. status, generatedAt and expiresAt are decided by the server. A
-// research report is shared by every user viewing that company, so accepting
-// generated content from a request body would let one user publish fake
-// research to everyone else.
+// The body of POST /research-reports. The client only names what to research:
+// contentMd, sources, model, status, generatedAt and expiresAt are the
+// server's. Reports are shared, so a client cannot supply their content.
 export const newResearchReportRules = z.object({
     reportType: z.enum(ReportType),
 
 
     companyId: z.guid(),
 
+    // Optional, because research can be about a company on its own or tied to
+    // one posting.
     opportunityId: z.guid().optional(),
 })
 

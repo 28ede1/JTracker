@@ -1,10 +1,5 @@
 // ---------------------------------------------------------------------------
 // Contact validation tests
-//
-// No database and no HTTP here. These call the rule sets directly, which is
-// what makes them fast enough to run on every save. The route tests cover the
-// same rules end to end, but only for the handful of cases worth paying a
-// network round trip for.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
@@ -49,16 +44,12 @@ describe("newContactRules", () => {
       relationship: "HIRING_MANAGER",
       notes: "Met at a career fair.",
 
-      // Text in, Date out. Prisma will not accept the string, so this coercion
-      // is the reason a contact can be created from a plain JSON body.
       lastContactedAt: new Date("2026-03-01T12:00:00.000Z"),
       nextFollowUpAt: new Date("2026-04-01T12:00:00.000Z"),
       companyId: "550e8400-e29b-41d4-a716-446655440000",
     });
   });
 
-  // Only two fields are required, which matters because a contact is often
-  // saved the moment a name is heard, before anything else is known.
   it("accepts a body with only the required fields", () => {
     const result = newContactRules.safeParse({
       firstName: "Ada",
@@ -99,8 +90,6 @@ describe("newContactRules", () => {
     expect(result.data?.firstName).toBe("Ada");
   });
 
-  // Trimming happens before the length check, so a name of only spaces is
-  // caught here rather than becoming a blank row in the contact list.
   it("rejects a first name that is only whitespace", () => {
     const result = newContactRules.safeParse({
       firstName: "   ",
@@ -129,8 +118,6 @@ describe("newContactRules", () => {
     expect(result.success).toBe(false);
   });
 
-  // linkedinUrl is rendered as a clickable link, so a value that is not a real
-  // url has to be stopped at the edge rather than stored and shown to a user.
   it("rejects a linkedin url that is not a url", () => {
     const result = newContactRules.safeParse({
       firstName: "Ada",
@@ -161,9 +148,6 @@ describe("newContactRules", () => {
     expect(result.success).toBe(false);
   });
 
-  // This is the security behaviour, and it is what stops a client from choosing
-  // who a contact belongs to. userId is not in the schema, so it is dropped
-  // here and the route supplies the id from the verified token instead.
   it("strips fields that are not in the schema", () => {
     const result = newContactRules.safeParse({
       firstName: "Ada",
@@ -181,8 +165,6 @@ describe("newContactRules", () => {
   });
 });
 
-// Express hands over every query parameter as text, so each test feeds strings
-// in and checks the parsed value that comes out.
 describe("contactQueryRules", () => {
   it("fills in defaults when no parameters are given", () => {
     const result = contactQueryRules.safeParse({});
@@ -236,8 +218,6 @@ describe("contactQueryRules", () => {
     expect(result.data?.q).toBe("ada");
   });
 
-  // A cleared search box sends q as an empty string. That must drop the filter
-  // rather than fail the request.
   it("treats an empty search term as no search", () => {
     const result = contactQueryRules.safeParse({ q: "" });
 
@@ -263,9 +243,6 @@ describe("contactQueryRules", () => {
     );
   });
 
-  // A parameter that is not declared must never reach the service and become a
-  // filter. userId is the one that matters: a client must not be able to ask
-  // for someone else's contacts by adding it to the query string.
   it("strips parameters that are not in the schema", () => {
     const result = contactQueryRules.safeParse({
       page: "1",

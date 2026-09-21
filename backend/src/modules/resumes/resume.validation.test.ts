@@ -1,10 +1,5 @@
 // ---------------------------------------------------------------------------
 // Resume validation tests
-// 
-// No database and no HTTP here. These call the rule sets directly, which is
-// what makes them fast enough to run on every save. The route tests cover the
-// same rules end to end, but only for the handful of cases worth paying a
-// network round trip for.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";

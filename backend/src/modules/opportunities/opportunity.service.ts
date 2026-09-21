@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
 // Opportunity service
 //
-// Talks to the database. Nothing here knows about Express, so these functions
-// can also be called later by a scraper or a test, not just by a web request.
+// Directly talks to the database. Meant to be called only after client input
+// has been normalized and checked.
 // ---------------------------------------------------------------------------
 
 import { prisma } from "../../lib/prisma.ts";
@@ -20,8 +20,7 @@ type ListOpportunitiesOptions = {
   isActive: boolean;
 };
 
-// Only the company fields the list actually shows. Selecting the whole row
-// would send every column of every company on every page.
+// Only the company fields the list actually shows.
 const companyPreview = {
   select: { id: true, name: true, logoUrl: true },
 };
@@ -39,8 +38,8 @@ export function listOpportunities({
   const skip = (page - 1) * limit;
 
   return prisma.opportunity.findMany({
-    // Prisma ignores any key whose value is undefined, so an absent filter
-    // drops out of the query on its own.
+    // Prisma ignores a key whose value is undefined, so a filter the client did
+    // not send drops out of the query on its own.
     where: {
       isActive,
       type,
@@ -53,10 +52,8 @@ export function listOpportunities({
       location: location ? { contains: location, mode: "insensitive" } : undefined,
     },
 
-    // Newest first, since a feed is about what is open now. Rows with no
-    // posting date go last instead of first, which is what Postgres would
-    // otherwise do for a descending sort. The id breaks ties so paging never
-    // shows or skips a row.
+    // Newest first. Rows with no posting date go last rather than first, which
+    // is what Postgres would otherwise do on a descending sort.
     orderBy: [{ postedAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
     skip,
     take: limit,

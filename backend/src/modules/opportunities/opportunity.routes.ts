@@ -1,11 +1,10 @@
 // ---------------------------------------------------------------------------
 // Opportunity routes
 //
-// Handles the web side: read the request, check the input, call the service,
-// send a response. No database code here.
-//
-// Postings are shared reference data, the same feed for everybody, so these are
-// mounted without requireAuth and nothing here is scoped to a user.
+// Reads the request, and if input is valid, calls the proper service and sends
+// the response back to the client. Postings are shared reference data, the same
+// feed for everybody, so these are mounted without requireAuth and nothing here
+// is scoped to a user.
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";
@@ -25,7 +24,6 @@ import {
 export const opportunityRoutes = Router();
 
 opportunityRoutes.get("/", async (req, res) => {
-  // A query string is client input, so it gets checked exactly like a body.
   const result = opportunityQueryRules.safeParse(req.query);
 
   if (!result.success) {

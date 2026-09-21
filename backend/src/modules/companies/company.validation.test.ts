@@ -1,10 +1,5 @@
 // ---------------------------------------------------------------------------
 // Company validation tests
-//
-// No database and no HTTP here. These call the rule sets directly, which is
-// what makes them fast enough to run on every save. The route tests cover the
-// same rules end to end, but only for the handful of cases worth paying a
-// network round trip for.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
@@ -84,23 +79,17 @@ describe("newCompanyRules", () => {
     expect(result.success).toBe(false);
   });
 
-  // This is the security behaviour, so it gets its own test. Fields not
-  // declared in the schema must never reach the database.
   it("strips fields that are not in the schema", () => {
     const result = newCompanyRules.safeParse({ name: "Stripe", banana: 7 });
 
     expect(result.success).toBe(true);
 
-    // The check has to be inside this branch, because result.data only exists
-    // when success is true. TypeScript enforces that.
     if (result.success) {
       expect(result.data).toEqual({ name: "Stripe" });
     }
   });
 });
 
-// Express hands over every query parameter as text, so each test feeds strings
-// in and checks the parsed value that comes out.
 describe("companyQueryRules", () => {
   it("fills in defaults when no parameters are given", () => {
     const result = companyQueryRules.safeParse({});
@@ -113,8 +102,6 @@ describe("companyQueryRules", () => {
     }
   });
 
-  // Express hands over strings, so this conversion is the whole reason
-  // z.coerce is used instead of z.number.
   it("converts numeric text into numbers", () => {
     const result = companyQueryRules.safeParse({ page: "2", limit: "10" });
 
@@ -131,6 +118,7 @@ describe("companyQueryRules", () => {
     expect(companyQueryRules.safeParse({ page: "-5" }).success).toBe(false);
   });
 
+  // Without a ceiling a client could ask for the whole table in one request.
   it("rejects a limit above the maximum", () => {
     expect(companyQueryRules.safeParse({ limit: "101" }).success).toBe(false);
   });
@@ -153,8 +141,6 @@ describe("companyQueryRules", () => {
     }
   });
 
-  // A cleared search box sends q as an empty string. That must drop the filter
-  // rather than fail the request.
   it("treats an empty search term as no search", () => {
     const result = companyQueryRules.safeParse({ q: "" });
 

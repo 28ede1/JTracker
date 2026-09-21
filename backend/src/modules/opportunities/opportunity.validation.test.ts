@@ -1,10 +1,5 @@
 // ---------------------------------------------------------------------------
 // Opportunity validation tests
-//
-// No database and no HTTP here. These call the rule sets directly, which is
-// what makes them fast enough to run on every save. The route tests cover the
-// same rules end to end, but only for the handful of cases worth paying a
-// network round trip for.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
@@ -110,16 +105,12 @@ describe("newOpportunityRules", () => {
     });
 })
 
-// Express hands over every query parameter as text, so each test feeds strings
-// in and checks the parsed value that comes out.
 describe("opportunityQueryRules", () => {
     it("fills in defaults when no parameters are given", () => {
         const result = opportunityQueryRules.safeParse({});
 
         expect(result.success).toBe(true)
 
-        // The defaults are what an unfiltered feed request turns into, so all
-        // three are checked together.
         expect(result.data).toEqual({
             page: 1,
             limit: 50,
@@ -158,6 +149,7 @@ describe("opportunityQueryRules", () => {
         expect(opportunityQueryRules.safeParse({ page: "-5" }).success).toBe(false)
     });
 
+    // Without a ceiling a client could ask for the whole feed in one request.
     it("rejects a limit above the maximum", () => {
         expect(opportunityQueryRules.safeParse({ limit: "101" }).success).toBe(false)
     });
@@ -174,8 +166,6 @@ describe("opportunityQueryRules", () => {
         expect(result.data?.q).toBe("engineer")
     });
 
-    // A cleared search box sends q as an empty string. That must drop the
-    // filter rather than fail the request.
     it("treats an empty search term as no search", () => {
         const result = opportunityQueryRules.safeParse({ q: "" });
 
@@ -206,8 +196,6 @@ describe("opportunityQueryRules", () => {
         expect(result.data?.location).toBe("Remote")
     });
 
-    // This is the case z.coerce.boolean would get wrong, since any non-empty
-    // string is truthy. Closed postings stay hidden unless they are asked for.
     it("reads isActive=false as the boolean false", () => {
         const result = opportunityQueryRules.safeParse({ isActive: "false" });
 
@@ -222,16 +210,12 @@ describe("opportunityQueryRules", () => {
         expect(result.data?.isActive).toBe(true)
     });
 
-    // Only the two literal strings are allowed, so a typo becomes a 400 instead
-    // of silently showing the wrong half of the feed.
     it("rejects isActive values other than the two literal strings", () => {
         expect(opportunityQueryRules.safeParse({ isActive: "1" }).success).toBe(false)
         expect(opportunityQueryRules.safeParse({ isActive: "yes" }).success).toBe(false)
         expect(opportunityQueryRules.safeParse({ isActive: "" }).success).toBe(false)
     });
 
-    // This is the security behaviour. A parameter that is not declared must
-    // never reach the service and become a filter.
     it("strips parameters that are not in the schema", () => {
         const result = opportunityQueryRules.safeParse({ page: "1", banana: "7" });
 

@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
 // Fit Analysis service
 //
-// Talks to the database. Nothing here knows about Express, so these functions
-// can also be called later by a test or a background job, not just by a web
-// request.
+// Directly talks to the database. Meant to be called only after client input
+// has been normalized and checked. Every function takes userId first and every
+// query filters by it.
 // ---------------------------------------------------------------------------
 
 import { prisma } from "../../lib/prisma.ts"
@@ -57,6 +57,7 @@ export function listFitAnalyses(
             userId,
         },
 
+        // Newest first. The id breaks ties so paging never shows or skips a row.
         orderBy: [{createdAt: "desc"}, { id: "asc"}],
         skip,
         take: limit,
@@ -64,6 +65,9 @@ export function listFitAnalyses(
     })
 }
 
+// findFirst, because "this row, and only if it is yours" is not a unique index
+// and findUnique only accepts unique fields. Someone else's row comes back as
+// null, which is what lets the route answer 404 without revealing the id.
 export function findFitAnalysis( userId: string, id: string ) {
     return prisma.fitAnalysis.findFirst({
         where: {id, userId},
@@ -71,10 +75,15 @@ export function findFitAnalysis( userId: string, id: string ) {
     })
 }
 
+// Returns null when either referenced row is missing or belongs to someone
+// else. z.guid() only proved the ids are shaped like ids, not that they are
+// this user's to use.
 export async function createFitAnalysis(
     userId: string,
     { resumeId, opportunityId} : NewFitAnalysis,
 ) {
+    // The opportunity is shared reference data, so it is checked for existence
+    // only. The resume is personal, so its query also filters by userId.
     const [opportunity, resume] = await Promise.all([
         prisma.opportunity.findUnique({
             where: { id: opportunityId},
@@ -100,6 +109,8 @@ export async function createFitAnalysis(
       });
 }
 
+// deleteMany rather than delete, because delete only accepts unique fields and
+// would remove a row by id no matter who owns it.
 export async function deleteFitAnalysis(userId: string, id: string) {
     const result = await prisma.fitAnalysis.deleteMany({
       where: { id, userId },

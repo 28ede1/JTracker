@@ -1,13 +1,9 @@
 // ---------------------------------------------------------------------------
 // Contact service
 //
-// Talks to the database. Nothing here knows about Express, so these functions
-// can also be called later by a scraper or a test, not just by a web request.
-//
-// Every function takes userId first, and every query filters by it. Contacts
-// are the first thing in the app that belongs to one person rather than to
-// everybody, so that argument is not a convenience: it is the line between the
-// two.
+// Directly talks to the database. Meant to be called only after client input
+// has been normalized and checked. Contacts belong to one person, so every
+// function takes userId first and every query filters by it.
 // ---------------------------------------------------------------------------
 
 import { prisma } from "../../lib/prisma.ts";
@@ -22,17 +18,10 @@ type ListContactsOptions = {
   companyId?: string;
 };
 
-// Only the company fields the list actually shows. Selecting the whole row
-// would send every column of every company on every page.
 const companyPreview = {
   select: { id: true, name: true, logoUrl: true },
 };
 
-// userId is a separate argument rather than part of the options object on
-// purpose. Options come from the query string and are the caller's wish list;
-// userId comes from the verified token and is not negotiable. Keeping them
-// apart makes it impossible to write ...req.query and accidentally let a client
-// choose whose contacts to read.
 export function listContacts(
   userId: string,
   { page, limit, q, relationship, companyId }: ListContactsOptions,
@@ -40,9 +29,6 @@ export function listContacts(
   const skip = (page - 1) * limit;
 
   return prisma.contact.findMany({
-    // Prisma ignores any key whose value is undefined, so an absent filter
-    // drops out of the query on its own. userId is the one filter that is
-    // always present, which is what makes this line the privacy boundary.
     where: {
       userId,
       relationship,
@@ -63,7 +49,8 @@ export function listContacts(
         : {}),
     },
 
-    // Oldest first, so that users can be aware of who they haven't contacted in a while
+    // Oldest contact first, so the people going cold surface at the top. The id
+    // breaks ties so paging never shows or skips a row.
     orderBy: [{ lastContactedAt: { sort: "asc", nulls: "last" } }, { id: "asc" }],
     skip,
     take: limit,
@@ -71,10 +58,9 @@ export function listContacts(
   });
 }
 
-// findFirst instead of findUnique because the lookup is no longer by id alone.
-// findUnique only accepts unique fields, and "id and owner together" is not a
-// unique index, so this is the query that expresses "this row, and only if it
-// is yours". A row owned by someone else comes back as null.
+// findFirst, because "this row, and only if it is yours" is not a unique index
+// and findUnique only accepts unique fields. Someone else's row comes back as
+// null, which is what lets the route answer 404 without revealing the id.
 export function findContact(userId: string, id: string) {
   return prisma.contact.findFirst({
     where: {
@@ -85,10 +71,6 @@ export function findContact(userId: string, id: string) {
   });
 }
 
-// userId is spread in last, after the validated data, so it cannot be
-// overwritten by a field that arrived in the request. The order of those two
-// lines is the entire guarantee that a client cannot file a contact under
-// somebody else's account.
 export function createContact(
   userId: string,
   data: {

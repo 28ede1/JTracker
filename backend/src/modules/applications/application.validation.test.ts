@@ -1,10 +1,5 @@
 // ---------------------------------------------------------------------------
 // Application validation tests
-//
-// No database and no HTTP here. These call the rule sets directly, which is
-// what makes them fast enough to run on every save. The route tests cover the
-// same rules end to end, but only for the handful of cases worth paying a
-// network round trip for.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, it } from "vitest";
@@ -16,8 +11,6 @@ import {
   applicationIdRules,
 } from "./application.validation.ts";
 
-// A valid uuid reused across the tests, so a failure is never about the shape
-// of the id when the test is about something else.
 const ID = "550e8400-e29b-41d4-a716-446655440000";
 const OTHER_ID = "3f1c1b2e-9a4d-4f0e-8b3a-2c5d6e7f8a90";
 
@@ -47,14 +40,10 @@ describe("newApplicationRules", () => {
       resumeId: OTHER_ID,
       referralContactId: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
 
-      // Text in, Date out. Prisma will not accept the string, so this coercion
-      // is the reason an application can be created from a plain JSON body.
       appliedAt: new Date("2026-03-01T12:00:00.000Z"),
     });
   });
 
-  // Only the opportunity is required, because an application usually starts as
-  // a posting saved for later, before a resume is picked or anything is sent.
   it("accepts a body with only the opportunity", () => {
     const result = newApplicationRules.safeParse({ opportunityId: ID });
 
@@ -67,9 +56,6 @@ describe("newApplicationRules", () => {
     expect(result.success).toBe(false);
   });
 
-  // An absent status must stay absent rather than becoming a value here. The
-  // database column carries @default(SAVED), and leaving the key out is what
-  // lets that default be the single place the starting status is decided.
   it("leaves status out when it is not sent", () => {
     const result = newApplicationRules.safeParse({ opportunityId: ID });
 
@@ -123,9 +109,6 @@ describe("newApplicationRules", () => {
     expect(result.success).toBe(false);
   });
 
-  // This is the security behaviour, and it is what stops a client from choosing
-  // who an application belongs to. userId is not in the schema, so it is dropped
-  // here and the route supplies the id from the verified token instead.
   it("strips fields that are not in the schema", () => {
     const result = newApplicationRules.safeParse({
       opportunityId: ID,
@@ -139,8 +122,6 @@ describe("newApplicationRules", () => {
   });
 });
 
-// Express hands over every query parameter as text, so each test feeds strings
-// in and checks the parsed value that comes out.
 describe("applicationQueryRules", () => {
   it("fills in defaults when no parameters are given", () => {
     const result = applicationQueryRules.safeParse({});
@@ -197,9 +178,6 @@ describe("applicationQueryRules", () => {
     ).toBe(false);
   });
 
-  // A parameter that is not declared must never reach the service and become a
-  // filter. userId is the one that matters: a client must not be able to ask for
-  // someone else's applications by adding it to the query string.
   it("strips parameters that are not in the schema", () => {
     const result = applicationQueryRules.safeParse({
       page: "1",
@@ -217,8 +195,6 @@ describe("applicationQueryRules", () => {
 });
 
 describe("updateApplicationRules", () => {
-  // A PATCH is meant to carry only what changed, so one field on its own is the
-  // normal case rather than a special one.
   it("accepts a single field", () => {
     const result = updateApplicationRules.safeParse({ status: "INTERVIEWING" });
 
@@ -242,9 +218,6 @@ describe("updateApplicationRules", () => {
     });
   });
 
-  // null is how a client erases a value, and it has to survive parsing as null
-  // rather than being turned into undefined. Prisma reads the two differently:
-  // null clears the column, undefined leaves it alone.
   it("accepts null for the clearable fields", () => {
     const result = updateApplicationRules.safeParse({
       appliedAt: null,
@@ -255,9 +228,6 @@ describe("updateApplicationRules", () => {
     expect(result.data).toEqual({ appliedAt: null, notes: null });
   });
 
-  // The column is not nullable in the database, so there is no such thing as an
-  // application with no status. Catching it here keeps that impossible value
-  // from reaching Postgres and coming back as a 500.
   it("rejects null for status", () => {
     expect(updateApplicationRules.safeParse({ status: null }).success).toBe(
       false,
@@ -276,9 +246,6 @@ describe("updateApplicationRules", () => {
     ).toBe(false);
   });
 
-  // opportunityId is missing from this schema on purpose. An application
-  // pointed at a different posting is a different application, so the field is
-  // dropped instead of being written, and the same goes for userId.
   it("strips fields that are not editable", () => {
     const result = updateApplicationRules.safeParse({
       status: "OFFER",

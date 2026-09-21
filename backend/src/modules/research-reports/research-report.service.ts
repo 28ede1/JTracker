@@ -1,8 +1,9 @@
 // ---------------------------------------------------------------------------
 // Research Report service
 //
-// Talks to the database. Nothing here knows about Express, so these functions
-// can also be called later by a scraper or a test, not just by a web request.
+// Directly talks to the database. Meant to be called only after client input
+// has been normalized and checked. No userId anywhere, unlike the other
+// services: a report is about a company, so everyone reads the same rows.
 // ---------------------------------------------------------------------------
 
 import { prisma } from "../../lib/prisma.ts";
@@ -21,6 +22,8 @@ type NewResearchReport = {
   opportunityId?: string;
 };
 
+// contentMd is the whole generated report, so it stays out of every response
+// this service returns.
 const researchReportPreview = {
   select: {
     id: true,
@@ -43,6 +46,7 @@ export function listResearchReports({
       reportType,
       companyId,
     },
+    // Newest first, since research goes stale.
     orderBy: {
       createdAt: "desc",
     },
@@ -61,6 +65,8 @@ export function findResearchReport(id: string) {
   });
 }
 
+// deleteMany rather than delete, because delete throws when nothing matched.
+// A count of zero is the "no such id" the route turns into a 404.
 export async function deleteResearchReport(id: string) {
   const result = await prisma.researchReport.deleteMany({
     where: { id },

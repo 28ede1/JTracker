@@ -1,12 +1,9 @@
 // ---------------------------------------------------------------------------
 // Contact routes
 //
-// Handles the web side: read the request, check the input, call the service,
-// send a response. No database code here.
-//
-// Every route in this file is mounted behind requireAuth in app.ts, and every
-// call below passes req.userId to the service. Contacts belong to one person,
-// so that argument is what keeps one user's rows out of another's responses.
+// Reads the request, and if input is valid, calls the proper service and sends
+// the response back to the client. Mounted behind requireAuth in app.ts, so
+// req.userId is already verified by the time a handler runs.
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";
@@ -26,7 +23,6 @@ import {
 export const contactRoutes = Router();
 
 contactRoutes.get("/", async (req, res) => {
-  // A query string is client input, so it gets checked exactly like a body.
   const result = contactQueryRules.safeParse(req.query);
 
   if (!result.success) {
@@ -34,9 +30,6 @@ contactRoutes.get("/", async (req, res) => {
     return;
   }
 
-  // The ! tells TypeScript that userId is really there. requireAuth is mounted
-  // in front of every route in this file and answers 401 when there is no valid
-  // token, so by the time this line runs it has always been set.
   const contacts = await listContacts(req.userId!, result.data);
   res.json(contacts);
 });
@@ -51,9 +44,6 @@ contactRoutes.get("/:id", async (req, res) => {
 
   const contact = await findContact(req.userId!, id.data);
 
-  // Someone else's contact comes back as null, so it gets the same 404 as an id
-  // that does not exist at all. Answering 403 here would be a way to confirm
-  // which ids are real, one guess at a time.
   if (!contact) {
     res.status(404).json({ error: "Contact not found" });
     return;

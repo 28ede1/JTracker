@@ -1,24 +1,23 @@
 // ---------------------------------------------------------------------------
-// Application input validation
+// Application validation
 //
-// The trust boundary for the application module. Routes call these rule sets,
-// services never do, so a service always receives values that are already valid.
+// Validates client input, and defines the object shape of what a new row should
+// look like. Normalizes input and rejects anything incorrectly formatted.
+// Routes call these.
 // ---------------------------------------------------------------------------
 
 import { z } from "zod";
 
-// Imported from the generated client so the schema stays the only place that
-// decides which enum values are legal.
 import { ApplicationStatus } from "../../../generated/prisma/enums.ts"; 
 
-// The body of POST /applications. 
-
+// The body of POST /applications. userId and statusChangedAt are missing on
+// purpose: the server owns both.
 export const newApplicationRules = z.object({
     status: z.enum(ApplicationStatus).optional(),
     appliedAt: z.coerce.date().optional(),
     notes: z.string().trim().max(5000).optional(),
 
-    // Required because applications are made to a specific opportunity
+    // Required, because an application is always made to a specific posting.
     opportunityId: z.guid(),
 
     resumeId: z.guid().optional(),
@@ -34,11 +33,9 @@ export const applicationQueryRules = z.object({
   opportunityId: z.guid().optional(),
 });
 
-// Validates the body of PATCH /applications/:id.
-//
-// .partial() makes every field optional, allowing the client to update only
-// the fields it sends. Sending null clears appliedAt or notes, while leaving
-// a field out keeps its current value unchanged.
+// The body of PATCH /applications/:id. .partial() makes every field optional,
+// so a client can send only what it is changing. Sending null clears appliedAt
+// or notes, while leaving a field out keeps its current value.
 export const updateApplicationRules = z
   .object({
     status: z.enum(ApplicationStatus),

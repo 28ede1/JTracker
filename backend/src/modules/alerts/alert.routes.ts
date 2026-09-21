@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Alert routes
 
-// Reads the request, and if input is valid, cals the proper service and sends
+// Reads the request, and if input is valid, calls the proper service and sends
 // the response back to the client. Mounted behind requireAuth in app.ts, so 
 // req.userId is already verified by the time a handler runs.
 // ---------------------------------------------------------------------------

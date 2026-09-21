@@ -3,15 +3,13 @@
 //
 // The whole path end to end: a real HTTP request, through the validation rules
 // and the service, to the real database and back. supertest drives the app
-// object directly, so nothing has to be listening on a port.
+// object directly, so nothing has to listen on a port. No log-in step, because
+// postings are shared reference data mounted without requireAuth.
 //
-// opportunity.validation.test.ts covers the rules on their own and runs in
-// milliseconds. These are the slower cases worth paying a round trip for,
-// because they prove the wiring rather than the rules.
-//
-// No credentials are needed. Postings are shared reference data mounted without
-// requireAuth, which is why this file has no log-in step and the contact and
-// user route tests do.
+// Three things only this file can prove: the feed ordering, which puts the
+// newest posting first and rows with no posted date last; the company link,
+// which needs a real row on the other end; and that a malformed query string
+// comes back as a 400 instead of reaching Prisma and becoming a 500.
 // ---------------------------------------------------------------------------
 
 import request from "supertest";
@@ -22,32 +20,12 @@ import { prisma } from "../../lib/prisma.ts";
 
 const app = createApp();
 
-// ---------------------------------------------------------------------------
-// Cleanup
-//
-// These tests run against the development database, so they have to remove
-// exactly the rows they create and nothing else. Every opportunity made here is
-// titled with the prefix below, which lets a single query find all of them.
-//
-// Deleting by title instead of by recorded id matters for two reasons. A test
-// that fails before it can record an id still gets cleaned up, and rows left
-// behind by a run that was interrupted partway through get swept on the next
-// start instead of piling up.
-// ---------------------------------------------------------------------------
-
 const TEST_PREFIX = "Test ";
 
-// Builds a title that the cleanup query is guaranteed to match. Using this
-// instead of a plain string stops a future test from inventing a title that
-// cleanup does not know to look for.
 function testTitle(label: string) {
   return `${TEST_PREFIX}${label}`;
 }
 
-// Opportunities go first because they point at companies. Deleting the parent
-// row while a child still references it is the kind of ordering mistake that
-// only shows up once a foreign key is set to restrict, so the habit is worth
-// keeping even though this relation is optional.
 async function deleteTestData() {
   await prisma.opportunity.deleteMany({
     where: { title: { startsWith: TEST_PREFIX } },
@@ -58,20 +36,9 @@ async function deleteTestData() {
   });
 }
 
-// Clears strays from any earlier run that ended before it could clean up.
 beforeAll(deleteTestData);
 
-// Stops each test from seeing rows created by the test before it.
 afterEach(deleteTestData);
-
-// ---------------------------------------------------------------------------
-// Test data builder
-//
-// Every POST needs type, title and sourceUrl, so repeating all three in twenty
-// tests would bury the one field each test actually cares about. This returns
-// a valid body and lets the caller override only what is being tested, which
-// keeps the intent of each test on screen.
-// ---------------------------------------------------------------------------
 
 function newOpportunity(label: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -82,8 +49,6 @@ function newOpportunity(label: string, overrides: Record<string, unknown> = {}) 
   };
 }
 
-// Reads the titles out of a list response. Used by most of the filter tests,
-// which care about which rows came back rather than the whole row.
 function titlesOf(body: { title: string }[]) {
   return body.map((opportunity) => opportunity.title);
 }
@@ -97,11 +62,8 @@ describe("POST /opportunities", () => {
     expect(response.status).toBe(201);
     expect(response.body.title).toBe(testTitle("Created"));
 
-    // A generated id proves the row really reached the database.
     expect(response.body.id).toBeDefined();
 
-    // The database default, not something the client sent. Checking it here
-    // documents that a new posting is visible in the feed straight away.
     expect(response.body.isActive).toBe(true);
   });
 
@@ -121,8 +83,6 @@ describe("POST /opportunities", () => {
     expect(response.status).toBe(400);
   });
 
-  // sourceUrl is rendered as a clickable link, so a value that is not a real
-  // url has to be stopped at the edge rather than stored and shown to a user.
   it("returns 400 when sourceUrl is not a url", async () => {
     const response = await request(app)
       .post("/opportunities")
@@ -131,8 +91,6 @@ describe("POST /opportunities", () => {
     expect(response.status).toBe(400);
   });
 
-  // This is the security behaviour. Fields not declared in the schema must
-  // never reach the database.
   it("does not save fields that are not in the schema", async () => {
     const response = await request(app)
       .post("/opportunities")
@@ -142,8 +100,6 @@ describe("POST /opportunities", () => {
     expect(response.body.banana).toBeUndefined();
   });
 
-  // The client sends a date as text and Prisma needs a Date, so this proves the
-  // coercion in the schema actually runs on a real request.
   it("stores a posted date sent as text", async () => {
     const response = await request(app)
       .post("/opportunities")
@@ -151,14 +107,10 @@ describe("POST /opportunities", () => {
 
     expect(response.status).toBe(201);
 
-    // JSON has no date type, so the response carries the ISO string back.
     expect(response.body.postedAt).toBe("2026-08-01T12:00:00.000Z");
   });
 
   it("links the opportunity to a company", async () => {
-    // Created with Prisma rather than through POST /companies on purpose. The
-    // company endpoint is not what this file tests, so a bug over there should
-    // not turn up as a failure here.
     const company = await prisma.company.create({
       data: { name: testTitle("Acme") },
     });
@@ -183,13 +135,9 @@ describe("GET /opportunities", () => {
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body)).toBe(true);
 
-    // Checks that this specific opportunity is present rather than checking the
-    // array length, because other rows may exist in the database.
     expect(titlesOf(response.body)).toContain(testTitle("Listed"));
   });
 
-  // Only the size is checked. Which row comes back depends on rows this test
-  // did not create, because the list is sorted across the whole table.
   it("returns at most limit opportunities", async () => {
     await request(app).post("/opportunities").send(newOpportunity("Limit A"));
     await request(app).post("/opportunities").send(newOpportunity("Limit B"));
@@ -203,9 +151,6 @@ describe("GET /opportunities", () => {
     expect(response.body.length).toBe(1);
   });
 
-  // Two things make this deterministic. The search narrows the result to rows
-  // this test created, and the posted dates decide their order, so the exact
-  // title on each page can be asserted instead of just the count.
   it("returns the next rows when the page increases", async () => {
     await request(app)
       .post("/opportunities")
@@ -240,9 +185,6 @@ describe("GET /opportunities", () => {
     expect(response.body).toEqual([]);
   });
 
-  // The feed is about what is open now, so the newest posting leads. A row with
-  // no posted date is the case Postgres would otherwise put first, which is why
-  // the service asks for nulls last and why that deserves its own test.
   it("sorts by posted date, newest first, with undated rows last", async () => {
     await request(app)
       .post("/opportunities")
@@ -286,8 +228,6 @@ describe("GET /opportunities filters", () => {
     expect(titles).not.toContain(testTitle("Unrelated"));
   });
 
-  // Without mode "insensitive" in the service, this test fails and real users
-  // typing lowercase find nothing.
   it("matches regardless of letter case", async () => {
     await request(app).post("/opportunities").send(newOpportunity("Casing"));
 
@@ -363,8 +303,6 @@ describe("GET /opportunities filters", () => {
     expect(titles).not.toContain(testTitle("No Company"));
   });
 
-  // Location is free text in the database, so the filter matches part of the
-  // value. Searching "New York" has to find "New York, NY".
   it("filters by location, matching part of the value", async () => {
     await request(app)
       .post("/opportunities")
@@ -383,9 +321,6 @@ describe("GET /opportunities filters", () => {
     expect(titles).not.toContain(testTitle("In Boston"));
   });
 
-  // A closed posting is still a row, it just should not appear in the feed.
-  // isActive is not part of the create schema, so the flip happens through
-  // Prisma, the same way a future closing job would do it.
   it("hides inactive opportunities by default", async () => {
     const created = await request(app)
       .post("/opportunities")
@@ -422,17 +357,12 @@ describe("GET /opportunities filters", () => {
 
     expect(response.status).toBe(200);
 
-    // The filter is an exact match, not "include closed ones too", so the open
-    // posting has to be absent.
     const titles = titlesOf(response.body);
     expect(titles).toContain(testTitle("Closed"));
     expect(titles).not.toContain(testTitle("Open"));
   });
 });
 
-// A malformed query string is the client's mistake, so it has to come back as
-// 400. Before the schema existed, a negative page reached Prisma and became a
-// 500, which reads in the logs like a server defect.
 describe("GET /opportunities validation", () => {
   it("returns 400 when page is below 1", async () => {
     const response = await request(app).get("/opportunities").query({ page: -5 });
@@ -460,8 +390,6 @@ describe("GET /opportunities validation", () => {
     expect(response.status).toBe(400);
   });
 
-  // Anything other than the two literal strings is a typo, and a typo must not
-  // quietly flip which half of the feed comes back.
   it("returns 400 when isActive is not true or false", async () => {
     const response = await request(app)
       .get("/opportunities")
@@ -483,8 +411,6 @@ describe("GET /opportunities/:id", () => {
     expect(response.body.title).toBe(testTitle("Findable"));
   });
 
-  // The detail view shows the company name, so the include in the service is
-  // part of the contract and not just an implementation detail.
   it("includes the company of the opportunity", async () => {
     const company = await prisma.company.create({
       data: { name: testTitle("Acme") },
@@ -508,8 +434,6 @@ describe("GET /opportunities/:id", () => {
     expect(response.status).toBe(404);
   });
 
-  // This is what opportunityIdRules buys. Postgres rejects a non uuid string as
-  // a type error, so without the check this request would come back as a 500.
   it("returns 400 when the id is not a uuid", async () => {
     const response = await request(app).get("/opportunities/not-a-uuid");
 

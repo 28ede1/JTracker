@@ -1,12 +1,10 @@
 // ---------------------------------------------------------------------------
 // User routes
 //
-// Handles the web side: read the request, check the input, call the service,
-// send a response. No database code here.
-//
-// Every route in this file is mounted behind requireAuth in app.ts, so the id
-// each one writes comes from the token. The routes anyone can reach without an
-// account live in user.public.routes.ts instead.
+// Reads the request, and if input is valid, calls the proper service and sends
+// the response back to the client. Mounted behind requireAuth in app.ts, so the
+// id each route writes comes from the token. The routes anyone can reach
+// without an account live in user.public.routes.ts instead.
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";
@@ -24,10 +22,8 @@ import {
 
 export const userRoutes = Router();
 
-// "me" instead of an id in the path. There is no id to pass, because the only
-// row a signed-in person is allowed to read here is their own, and that id
-// comes from the token. A path like /users/:id would invite a client to try
-// somebody else's, and then this file would need a guard against it.
+// "me" instead of an id in the path, because the only row a signed-in person
+// may read here is their own and that id comes from the token.
 userRoutes.get("/me", async (req, res) => {
     if (!req.userId) {
         res.status(401).json({ error: 'Not signed in' })
@@ -37,8 +33,7 @@ userRoutes.get("/me", async (req, res) => {
     const user = await findUser(req.userId)
 
     // Signing up and having a user row are two separate steps, so a real token
-    // with no row yet is normal, not an error. The 404 is how the client knows
-    // to send the person through profile setup.
+    // with no row yet is normal. The 404 is what sends the client to setup.
     if (!user) {
         res.status(404).json({ error: "User not found" });
         return;
@@ -47,12 +42,8 @@ userRoutes.get("/me", async (req, res) => {
     res.json(user);
 })
 
-// Safe to call more than once. The browser sends this every time a session
-// appears, which is far more often than there are rows to create, so ensureUser
-// treats "it is already there" as an ordinary success rather than an error.
-//
-// No id in the path or the body. The row being written is always the caller's
-// own, and the id for it comes from the token.
+// Safe to call more than once, because ensureUser treats "already there" as an
+// ordinary success.
 userRoutes.post("/", async (req, res) => {
     const result = newUserRules.safeParse(req.body);
 
@@ -70,9 +61,8 @@ userRoutes.post("/", async (req, res) => {
     res.status(201).json(user);
 })
 
-// Renaming. A username already taken by somebody else is refused by the unique
-// index in the database, which errorHandler turns into a 409, so there is no
-// check for it here.
+// Renaming. A username already taken is refused by the unique index in the
+// database, which errorHandler turns into a 409, so there is no check here.
 userRoutes.patch("/", async(req, res) => {
     const result = updateUserRules.safeParse(req.body);
 

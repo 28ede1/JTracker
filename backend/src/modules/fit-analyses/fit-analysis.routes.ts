@@ -1,11 +1,10 @@
 // ---------------------------------------------------------------------------
 // Fit Analysis routes
 //
-// Handles the web side: read the request, check the input, call the service,
-// send a response. No database code here.
-//
-// Every route in this file is mounted behind requireAuth in app.ts, and every
-// call below passes req.userId to the service.
+// Reads the request, and if input is valid, calls the proper service and sends
+// the response back to the client. Mounted behind requireAuth in app.ts, so
+// req.userId is already verified by the time a handler runs. There is no PATCH:
+// the written judgement belongs to the AI call, not to the client.
 // ---------------------------------------------------------------------------
 
 import { Router } from "express";
