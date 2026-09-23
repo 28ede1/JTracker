@@ -41,3 +41,20 @@ export function createCompany(data: {
 }) {
   return prisma.company.create({ data });
 }
+
+export function upsertCompanyByName(data: {
+  name: string;
+  industry?: string;
+  websiteUrl?: string;
+  logoUrl?: string;
+}) {
+  return prisma.company.upsert({
+    // name is the unique column, so it is what the database checks against.
+    where: { name: data.name },
+
+    // Left empty so an import cannot overwrite details a user or the company
+    // research feature already filled in with something better.
+    update: {},
+    create: data,
+  });
+}

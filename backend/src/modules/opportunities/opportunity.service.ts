@@ -84,3 +84,32 @@ export function createOpportunity(data: {
 }) {
   return prisma.opportunity.create({ data });
 }
+
+export function upsertOpportunityFromSource(data: {
+  dedupKey: string;
+  lastSeenAt: Date;
+  source: string;
+  externalId?: string;
+  type: OpportunityType;
+  title: string;
+  sourceUrl: string;
+  description?: string;
+  location?: string;
+  workMode?: WorkMode;
+  postedAt?: Date;
+  deadlineAt?: Date;
+  companyId?: string;
+  details?: Prisma.InputJsonValue;
+}) {
+  return prisma.opportunity.upsert({
+    // dedupKey is the listing's identity: the id the source gave it, or a hash
+    // of company, title and location when the source gave none.
+    where: { dedupKey: data.dedupKey },
+
+    // A listing met again only needs its timestamp moved forward, which is the
+    // signal for deciding later that a posting has gone stale.
+    update: { lastSeenAt: data.lastSeenAt },
+    create: data,
+  });
+}
+
