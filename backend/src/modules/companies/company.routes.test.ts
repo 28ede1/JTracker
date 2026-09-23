@@ -39,7 +39,7 @@ describe("POST /companies", () => {
   it("creates a company and returns 201", async () => {
     const response = await request(app)
       .post("/companies")
-      .send({ name: testName("Stripe"), domain: "test-stripe.example.com" });
+      .send({ name: testName("Stripe")});
 
     expect(response.status).toBe(201);
     expect(response.body.name).toBe(testName("Stripe"));
@@ -50,7 +50,7 @@ describe("POST /companies", () => {
   it("returns 400 when name is missing", async () => {
     const response = await request(app)
       .post("/companies")
-      .send({ domain: "no-name.example.com" });
+      .send({});
 
     expect(response.status).toBe(400);
   });
@@ -62,6 +62,61 @@ describe("POST /companies", () => {
 
     expect(response.status).toBe(201);
     expect(response.body.banana).toBeUndefined();
+  });
+});
+
+describe("POST /companies uniqueness", () => {
+  it("returns 409 when a company with that name already exists", async () => {
+    const first = await request(app)
+      .post("/companies")
+      .send({ name: testName("Duplicate") });
+
+    const second = await request(app)
+      .post("/companies")
+      .send({ name: testName("Duplicate") });
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(409);
+  });
+
+  it("stores only the first row when a duplicate is refused", async () => {
+    await request(app).post("/companies").send({ name: testName("Once") });
+    await request(app).post("/companies").send({ name: testName("Once") });
+
+    const response = await request(app)
+      .get("/companies")
+      .query({ q: testName("Once") });
+
+    expect(response.body.length).toBe(1);
+  });
+
+  // Proves the index covers the name alone. A second row with the same name is
+  // refused even though every other field is different.
+  it("refuses a duplicate name when the other fields differ", async () => {
+    await request(app)
+      .post("/companies")
+      .send({ name: testName("Shared"), industry: "Fintech" });
+
+    const response = await request(app)
+      .post("/companies")
+      .send({ name: testName("Shared"), industry: "Healthcare" });
+
+    expect(response.status).toBe(409);
+  });
+
+  // The control for the tests above. Without it, a route broken enough to
+  // refuse every POST would still let them pass.
+  it("accepts two companies with different names", async () => {
+    const first = await request(app)
+      .post("/companies")
+      .send({ name: testName("Distinct A") });
+
+    const second = await request(app)
+      .post("/companies")
+      .send({ name: testName("Distinct B") });
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
   });
 });
 

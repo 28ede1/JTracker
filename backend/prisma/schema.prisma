@@ -116,21 +116,12 @@ model User {
 // Company
 // ---------------------------------------------------------------------------
 //
-// `domain` is the identity key. It holds a normalized bare hostname such as
-// "stripe.com" and is unique, so "Stripe", "Stripe Inc." and "Stripe Payments"
-// collapse into one row instead of three. Names are unreliable for matching
-// because spelling, punctuation and legal suffixes vary by source. 
-//
-// `websiteUrl` is a display value. It holds the full clickable link shown in
-// the UI, such as "https://stripe.com/careers", and is never used for matching.
-//
-// '@@index([name])' Creates a database index on company names so queries searching for a
-// company by name can find matching records faster without scanning the entire table.
+// `name' will store the normalized company name and will be used 
+//  as the unique identifier outside of id
 
 model Company {
   id         String   @id @default(uuid()) @db.Uuid
-  name       String?   @unique
-  domain     String?  @unique
+  name       String   @unique
   websiteUrl String?
   logoUrl    String?
   industry   String?

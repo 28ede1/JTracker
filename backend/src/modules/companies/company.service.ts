@@ -35,7 +35,6 @@ export function findCompany(id: string) {
 
 export function createCompany(data: {
   name: string;
-  domain?: string;
   industry?: string;
   websiteUrl?: string;
   logoUrl?: string;

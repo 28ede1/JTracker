@@ -13,10 +13,9 @@ describe("newCompanyRules", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts a body with every field (name, domain, industry, websiteUrl, logoUrl", () => {
+  it("accepts a body with every field (name, industry, websiteUrl, logoUrl", () => {
     const result = newCompanyRules.safeParse({
       name: "Stripe",
-      domain: "stripe.com",
       industry: "Fintech",
       websiteUrl: "https://example.com",
       logoUrl: "https://example.com/logo.png",
@@ -26,7 +25,6 @@ describe("newCompanyRules", () => {
 
     expect(result.data).toEqual({
       name: "Stripe",
-      domain: "stripe.com",
       industry: "Fintech",
       websiteUrl: "https://example.com",
       logoUrl: "https://example.com/logo.png",
@@ -36,7 +34,6 @@ describe("newCompanyRules", () => {
   it("strips any fields that are not permitted", () => {
     const result = newCompanyRules.safeParse({
       name: "Stripe",
-      domain: "stripe.com",
       industry: "Fintech",
       websiteUrl: "https://example.com",
       logoUrl: "https://example.com/logo.png",
@@ -47,7 +44,6 @@ describe("newCompanyRules", () => {
     
     expect(result.data).toEqual({
       name: "Stripe",
-      domain: "stripe.com",
       industry: "Fintech",
       websiteUrl: "https://example.com",
       logoUrl: "https://example.com/logo.png",
@@ -62,7 +58,7 @@ describe("newCompanyRules", () => {
   });
 
   it("rejects a body with no name", () => {
-    const result = newCompanyRules.safeParse({ domain: "stripe.com" });
+    const result = newCompanyRules.safeParse({});
 
     expect(result.success).toBe(false);
   });

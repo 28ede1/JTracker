@@ -403,7 +403,6 @@ describe("DELETE /research-reports/:id", () => {
     );
 
     expect(response.status).toBe(204);
-    expect(response.body.id).toBe(created.id);
 
     const after = await request(app).get(`/research-reports/${created.id}`);
     expect(after.status).toBe(404);

@@ -16,6 +16,13 @@ export default defineConfig({
     // Runs test files one after another instead of in parallel.
     fileParallelism: false,
 
+    // How long a single test may run before Vitest gives up on it, in
+    // milliseconds. The default is 5000. These tests talk to a database over
+    // the network, so one test can spend a few seconds just waiting on round
+    // trips. This is only a ceiling, not a delay: a fast test still finishes
+    // fast.
+    testTimeout: 15000,
+
     // Prints the description of every test, not just a per file summary. The
     // default reporter only expands a file when it is slow or fails, which
     // hides fast tests like the validation ones.
