@@ -40,7 +40,7 @@ export type SerpApiJob = {
     items?: string[];
   }>;
 
-  apply_options?: Array<{
+apply_options?: Array<{
     title: string;
     link: string;
   }>;
