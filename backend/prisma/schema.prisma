@@ -143,6 +143,11 @@ model Company {
 // such as a hackathon's team size or an event's speaker list, go in `details`
 // as JSON. This avoids a wide table full of columns that are null for most rows.
 
+// source represents where the listing came from, e.g, "SERPAPI
+// externalId represents job_id found by SerpAPI when available
+// dedupkey prevents duplicate imports
+// lastSeenAt records the last time the import found this listing
+
 model Opportunity {
   id          String          @id @default(uuid()) @db.Uuid
   createdAt   DateTime        @default(now())
@@ -157,6 +162,11 @@ model Opportunity {
   deadlineAt  DateTime?
   details     Json?
   isActive    Boolean         @default(true)
+
+  source     String?  
+  externalId String?  
+  dedupKey   String?   @unique 
+  lastSeenAt DateTime? 
 
   companyId String?  @db.Uuid
   company   Company? @relation(fields: [companyId], references: [id])
