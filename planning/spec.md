@@ -48,9 +48,11 @@ Alert
 Sep 19 – The current implementation idea involves using SerpAPI to get opportunity listings (just SWE internships for now) from Google search results. This way, I don’t have to worry about using multiple APIs to fetch job data, especially since some of the more useful APIs, like Greenhouse and Ashby, do not support global job searches. Instead, they require you to query each company individually, assuming the company even lists jobs on that platform. 
 
 The current implementation is as follows:
-- Run a scheduled injestion job once per day 
-- Use SerpAPI's Google Jobs API to search for recent swe internships for the target recruiting year
-- Retrieve and process 5-10 pages of results per ingestion run
-- Normalize each SerpAPI result into JTracker's Opportunity data model
-- Before a search result is used to create an Opportunity entry, check if it exists in the db. Either use the job_id parameter that SerpAPI includes if available as a dedup key, or create a dedup key using URL, or use key using company name, title, location that is hashed.
-- Figure out someway to determine when old postings should be removed from db
+- Run a scheduled ingestion job once per day.
+- Use SerpAPI’s Google Jobs API to search for recent software engineering internships for the target recruiting year.
+- Retrieve and process 5–10 pages of results per ingestion run.
+- Normalize each SerpAPI result into JTracker’s Opportunity and Company data models.
+- Before creating an Opportunity, check whether the listing already exists in the database. Use SerpAPI’s job_id as the deduplication key when available. Otherwise, use a normalized application URL or a hash of the company name, title, and location.
+- Set isActive to false for imported jobs whose lastSeenAt is more than 30 days old.
+- Set isActive to true for new jobs and for existing jobs found again.
+- Have GET /opportunities show active opportunities, ordered by createdAt from newest to oldest.
