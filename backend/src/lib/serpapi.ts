@@ -14,10 +14,7 @@ import "dotenv/config";
 // serpApiClient.ts
 
 const SEARCH_QUERY =
-  '("software engineering intern" OR "software developer intern" OR ' +
-  '"data science intern" OR "data analyst intern" OR ' +
-  '"machine learning intern" OR "cybersecurity intern" OR ' +
-  '"product management intern" OR "UX design intern" OR "IT intern") 2027';
+  'software engineering intern';
 
 // based on api documentation, it describes what a job entry may look lik
 export type SerpApiJob = {

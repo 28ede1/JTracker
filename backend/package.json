@@ -2,6 +2,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "ingest": "tsx src/scripts/ingest-opportunities.ts",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
     "generate": "prisma generate",
