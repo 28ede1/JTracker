@@ -37,7 +37,7 @@ export function normalizeSerpApiJob(job: SerpApiJob, opportunityType: Opportunit
     thumbnail: job.thumbnail ?? "",
     description: job.description ?? "",
     applicationUrl,
-    opportunityType: OpportunityType,
+    opportunityType: opportunityType,
     job_id: job.job_id,
 
     // Identifies the listing so it is not inserted twice.
