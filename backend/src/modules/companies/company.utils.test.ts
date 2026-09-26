@@ -25,10 +25,16 @@ describe("normalizeCompanyName", () => {
     expect(result).toBe("Microsoft");
   });
 
-  it("remove The and Company", () => {
+  it("remove The and Company, maintains capitalizationas intended if '-' is present", () => {
     const result = normalizeCompanyName("The Coca-Cola Company");
 
-    expect(result).toBe("Coca-cola");
+    expect(result).toBe("Coca-Cola");
+  });
+
+  it("maintains hyphen capitalization as intended, test #2", () => {
+    const result = normalizeCompanyName("T-Mobile US, Inc.");
+
+    expect(result).toBe("T-Mobile Us");
   });
 
 });

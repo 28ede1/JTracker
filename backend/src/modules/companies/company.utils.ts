@@ -10,7 +10,7 @@
 export function normalizeCompanyName(name: string): string {
     const normalized = name
       .toLowerCase()
-      .replace(/[.,]/g, "") // remove every common or doc from the string
+      .replace(/[.,]/g, "") // remove EVERY (g means global) comma or doc from the string
       .replace(
         /\b(the|incorporated|corporation|company|limited|inc|corp|llc|ltd|co)\b/g,
         ""
@@ -22,5 +22,14 @@ export function normalizeCompanyName(name: string): string {
       throw new Error("Company name cannot be empty after normalization");
     }
   
-    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
-}
+    return normalized // example "coca-cola brothers"
+      .split(" ")  // ---> ['coca-cola', 'brothers']
+      .map((word) => // ---> // the following 3 lines run for each word
+        word  // 1) ['coca', 'cola'] ---> ['C' + 'oca', 'C' + 'ola'] ---> "Coca-Cola"
+              // 2) ['brothers'] ---> ['B' + 'rothers'] ---> 'Brothers'
+          .split("-") 
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join("-")
+      )  // ['Coca-Cola, 'Brothers']
+      .join(" "); // 'Coca-Cola Brothers'
+  }
