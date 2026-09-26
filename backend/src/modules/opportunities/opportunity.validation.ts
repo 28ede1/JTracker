@@ -31,6 +31,8 @@ export const newOpportunityRules = z.object({
       message: "details is too large",
     })
     .optional(),
+  
+  lastSeenAt: z.coerce.date().optional()
 });
 
 // The query string of GET /opportunities.

@@ -7,7 +7,7 @@
 // postings are shared reference data mounted without requireAuth.
 //
 // Three things only this file can prove: the feed ordering, which puts the
-// newest posting seen first (based on lastSeenAt); the company link,
+// newest posting created first (based on createdAt ); the company link,
 // which needs a real row on the other end; and that a malformed query string
 // comes back as a 400 instead of reaching Prisma and becoming a 500.
 // ---------------------------------------------------------------------------
@@ -160,8 +160,8 @@ describe("GET /opportunities", () => {
       .get("/opportunities")
       .query({ ...search, page: 2 });
 
-    expect(page1.body[0].title).toBe(testTitle("Page A"));
-    expect(page2.body[0].title).toBe(testTitle("Page B"));
+    expect(page1.body[0].title).toBe(testTitle("Page B"));
+    expect(page2.body[0].title).toBe(testTitle("Page A"));
   });
 
   it("returns an empty list for a page past the end", async () => {
@@ -175,7 +175,7 @@ describe("GET /opportunities", () => {
     expect(response.body).toEqual([]);
   });
 
-  it("sorts by lastSeenAt date, newest first, with undated rows last", async () => {
+  it("sorts by createdAt date, newest first, with undated rows last", async () => {
     await request(app)
       .post("/opportunities")
       .send(newOpportunity("Order B"));
@@ -196,8 +196,8 @@ describe("GET /opportunities", () => {
 
     expect(titlesOf(response.body)).toEqual([
       testTitle("Order A"),
-      testTitle("Order B"),
       testTitle("Order C"),
+      testTitle("Order B"),
     ]);
   });
 });

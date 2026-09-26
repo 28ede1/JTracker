@@ -49,8 +49,8 @@ export function listOpportunities({
       location: location ? { contains: location, mode: "insensitive" } : undefined,
     },
 
-    // Newest first (based on what opportunities were last seen)
-    orderBy: [{ lastSeenAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
+    // Newest first (based on what opportunities were last created)
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     skip,
     take: limit,
     include: { company: companyPreview },
@@ -74,6 +74,7 @@ export function createOpportunity(data: {
   location?: string;
   companyId?: string;
   details?: Prisma.InputJsonValue;
+  lastSeenAt?: string;
 }) {
   return prisma.opportunity.create({ data });
 }
