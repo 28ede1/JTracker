@@ -9,15 +9,19 @@
 import type { SerpApiJob } from "../../lib/serpapi.ts";
 import { OpportunityType } from "../../../generated/prisma/enums.ts";
 import { normalizeCompanyName} from "../companies/company.utils.ts"
-import { createOpportunityDedupeKey } from "./opportunity.utils.ts"
+import { createOpportunityDedupeKey, setPreferredApplicationUrl } from "./opportunity.utils.ts"
 
 export function normalizeSerpApiJob(job: SerpApiJob, opportunityType: OpportunityType) {
-  const applicationUrl = job.apply_options?.[0]?.link;
 
-  if ( !job.title || !job.company_name || !applicationUrl) {
+  if ( !job.title || !job.company_name || !job.apply_options?.length) {
     return null;
   }
 
+  const applicationUrl = setPreferredApplicationUrl(job.apply_options, job.company_name);
+
+  if (!applicationUrl) {
+    return null;
+  }
   const title = job.title.trim();
   const company = normalizeCompanyName(job.company_name);
   const location = job.location?.trim() ?? "Not specified";

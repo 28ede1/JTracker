@@ -14,7 +14,7 @@ import "dotenv/config";
 // serpApiClient.ts
 
 const SEARCH_QUERY =
-  'software engineering intern';
+  'Software Engineering Intern';
 
 // based on api documentation, it describes what a job entry may look lik
 export type SerpApiJob = {

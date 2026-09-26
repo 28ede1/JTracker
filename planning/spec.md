@@ -53,6 +53,34 @@ The current implementation is as follows:
 - Retrieve and process 5–10 pages of results per ingestion run.
 - Normalize each SerpAPI result into JTracker’s Opportunity and Company data models.
 - Before creating an Opportunity, check whether the listing already exists in the database. Use SerpAPI’s job_id as the deduplication key when available. Otherwise, use a normalized application URL or a hash of the company name, title, and location.
-- Set isActive to false for imported jobs whose lastSeenAt is more than 30 days old.
+- Set isActive to false for imported jobs whose createdAt is more than 30 days old.
 - Set isActive to true for new jobs and for existing jobs found again.
 - Have GET /opportunities show active opportunities, ordered by createdAt from newest to oldest.
+
+Implementation trace:
+
+npm run ingest command initilized by backend/package.json -->
+
+runs ingest-opportunities.ts --->
+
+calls ingestSerpApiOpportunitie() in opportunities/opportunity.ingest.ts -->
+
+calls fetchSerpApiJobs in lib/serpapi.ts, then normalizes the data with normalizeSerpApiJob() from /normalizeSerpApiJob.ts 
+before upserting companies and opportunities in db using upsertCompanyByName() from /company.service.ts and 
+upsertOpportunityFromSource from /opportunity.service.ts -->
+
+lib/serpapi.ts calls fetchSerpApiJobs which returns raw data from SerpApi Google Jobs endpoint -->
+
+/normalizeSerpApiJob.ts calls normalizeCompanyName() to allow company
+names to serve as unique keys and createOpportunityDedupeKey ()
+allows for either job_ids returned by SerpApi to be used as dedup keys
+or use hashed title-company-location dedup key if the job_id is not 
+found -->
+
+added looksLikeCompanyDomain() and setPreferredApplicationUrl() 
+in opportunity.utils to help prioritize having application
+urls be company specific urls rather than random job portals -->
+
+wrote scripts/deactivate-old-opportunties with function
+that will use prisma to set isActive for all opportunities
+with creation dates more than 30 days ago to FALSE (as a heuristic to let users know which applications are much older) -->
