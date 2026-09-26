@@ -74,7 +74,7 @@ export function createOpportunity(data: {
   location?: string;
   companyId?: string;
   details?: Prisma.InputJsonValue;
-  lastSeenAt?: string;
+  lastSeenAt?: Date;
 }) {
   return prisma.opportunity.create({ data });
 }
