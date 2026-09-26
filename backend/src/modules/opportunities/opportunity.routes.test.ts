@@ -7,7 +7,7 @@
 // postings are shared reference data mounted without requireAuth.
 //
 // Three things only this file can prove: the feed ordering, which puts the
-// newest posting first and rows with no posted date last; the company link,
+// newest posting seen first (based on lastSeenAt); the company link,
 // which needs a real row on the other end; and that a malformed query string
 // comes back as a 400 instead of reaching Prisma and becoming a 500.
 // ---------------------------------------------------------------------------
@@ -100,16 +100,6 @@ describe("POST /opportunities", () => {
     expect(response.body.banana).toBeUndefined();
   });
 
-  it("stores a posted date sent as text", async () => {
-    const response = await request(app)
-      .post("/opportunities")
-      .send(newOpportunity("Dated", { postedAt: "2026-08-01T12:00:00.000Z" }));
-
-    expect(response.status).toBe(201);
-
-    expect(response.body.postedAt).toBe("2026-08-01T12:00:00.000Z");
-  });
-
   it("links the opportunity to a company", async () => {
     const company = await prisma.company.create({
       data: { name: testTitle("Acme") },
@@ -154,11 +144,11 @@ describe("GET /opportunities", () => {
   it("returns the next rows when the page increases", async () => {
     await request(app)
       .post("/opportunities")
-      .send(newOpportunity("Page A", { postedAt: "2026-01-03T00:00:00.000Z" }));
+      .send(newOpportunity("Page A"));
 
     await request(app)
       .post("/opportunities")
-      .send(newOpportunity("Page B", { postedAt: "2026-01-02T00:00:00.000Z" }));
+      .send(newOpportunity("Page B"));
 
     const search = { q: testTitle("Page"), limit: 1 };
 
@@ -185,10 +175,10 @@ describe("GET /opportunities", () => {
     expect(response.body).toEqual([]);
   });
 
-  it("sorts by posted date, newest first, with undated rows last", async () => {
+  it("sorts by lastSeenAt date, newest first, with undated rows last", async () => {
     await request(app)
       .post("/opportunities")
-      .send(newOpportunity("Order B", { postedAt: "2026-01-02T00:00:00.000Z" }));
+      .send(newOpportunity("Order B"));
 
     await request(app)
       .post("/opportunities")
@@ -196,7 +186,7 @@ describe("GET /opportunities", () => {
 
     await request(app)
       .post("/opportunities")
-      .send(newOpportunity("Order A", { postedAt: "2026-01-03T00:00:00.000Z" }));
+      .send(newOpportunity("Order A"));
 
     const response = await request(app)
       .get("/opportunities")
@@ -263,24 +253,6 @@ describe("GET /opportunities filters", () => {
     const titles = titlesOf(response.body);
     expect(titles).toContain(testTitle("Hackathon"));
     expect(titles).not.toContain(testTitle("Internship"));
-  });
-
-  it("filters by work mode", async () => {
-    await request(app)
-      .post("/opportunities")
-      .send(newOpportunity("Remote", { workMode: "REMOTE" }));
-
-    await request(app)
-      .post("/opportunities")
-      .send(newOpportunity("Onsite", { workMode: "ONSITE" }));
-
-    const response = await request(app)
-      .get("/opportunities")
-      .query({ q: TEST_PREFIX.trim(), workMode: "REMOTE" });
-
-    const titles = titlesOf(response.body);
-    expect(titles).toContain(testTitle("Remote"));
-    expect(titles).not.toContain(testTitle("Onsite"));
   });
 
   it("filters by company", async () => {

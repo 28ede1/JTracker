@@ -6,7 +6,7 @@
 // ---------------------------------------------------------------------------
 
 import { prisma } from "../../lib/prisma.ts";
-import type { OpportunityType, WorkMode } from "../../../generated/prisma/enums.ts";
+import type { OpportunityType} from "../../../generated/prisma/enums.ts";
 import type { Prisma } from "../../../generated/prisma/client.ts";
 
 type ListOpportunitiesOptions = {
@@ -14,7 +14,6 @@ type ListOpportunitiesOptions = {
   limit: number;
   q?: string;
   type?: OpportunityType;
-  workMode?: WorkMode;
   companyId?: string;
   location?: string;
   isActive: boolean;
@@ -30,7 +29,6 @@ export function listOpportunities({
   limit,
   q,
   type,
-  workMode,
   companyId,
   location,
   isActive,
@@ -43,7 +41,6 @@ export function listOpportunities({
     where: {
       isActive,
       type,
-      workMode,
       companyId,
       title: q ? { contains: q, mode: "insensitive" } : undefined,
 
@@ -52,9 +49,8 @@ export function listOpportunities({
       location: location ? { contains: location, mode: "insensitive" } : undefined,
     },
 
-    // Newest first. Rows with no posting date go last rather than first, which
-    // is what Postgres would otherwise do on a descending sort.
-    orderBy: [{ postedAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
+    // Newest first (based on what opportunities were last seen)
+    orderBy: [{ lastSeenAt: { sort: "desc", nulls: "last" } }, { id: "asc" }],
     skip,
     take: limit,
     include: { company: companyPreview },
@@ -76,9 +72,6 @@ export function createOpportunity(data: {
   sourceUrl: string;
   description?: string;
   location?: string;
-  workMode?: WorkMode;
-  postedAt?: Date;
-  deadlineAt?: Date;
   companyId?: string;
   details?: Prisma.InputJsonValue;
 }) {
@@ -95,9 +88,6 @@ export function upsertOpportunityFromSource(data: {
   sourceUrl: string;
   description?: string;
   location?: string;
-  workMode?: WorkMode;
-  postedAt?: Date;
-  deadlineAt?: Date;
   companyId?: string;
   details?: Prisma.InputJsonValue;
 }) {

@@ -95,11 +95,11 @@ describe("POST /companies uniqueness", () => {
   it("refuses a duplicate name when the other fields differ", async () => {
     await request(app)
       .post("/companies")
-      .send({ name: testName("Shared"), industry: "Fintech" });
+      .send({ name: testName("Shared")});
 
     const response = await request(app)
       .post("/companies")
-      .send({ name: testName("Shared"), industry: "Healthcare" });
+      .send({ name: testName("Shared")});
 
     expect(response.status).toBe(409);
   });

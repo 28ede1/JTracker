@@ -35,8 +35,6 @@ export function findCompany(id: string) {
 
 export function createCompany(data: {
   name: string;
-  industry?: string;
-  websiteUrl?: string;
   logoUrl?: string;
 }) {
   return prisma.company.create({ data });
@@ -44,8 +42,6 @@ export function createCompany(data: {
 
 export function upsertCompanyByName(data: {
   name: string;
-  industry?: string;
-  websiteUrl?: string;
   logoUrl?: string;
 }) {
   return prisma.company.upsert({

@@ -20,9 +20,6 @@ describe("newOpportunityRules", () => {
             description: "Test description",
             sourceUrl: "https://example.com/opportunities/software-engineering-internship",
             location: "San Francisco, CA",
-            workMode: "ONSITE",
-            postedAt: "2026-08-01T12:00:00.000Z",
-            deadlineAt: "2026-09-30T23:59:59.000Z",
             companyId: "550e8400-e29b-41d4-a716-446655440000",
             details: {
                 hourlyPay: 50,
@@ -39,9 +36,6 @@ describe("newOpportunityRules", () => {
             description: "Test description",
             sourceUrl: "https://example.com/opportunities/software-engineering-internship",
             location: "San Francisco, CA",
-            workMode: "ONSITE",
-            postedAt: new Date("2026-08-01T12:00:00.000Z"),
-            deadlineAt: new Date("2026-09-30T23:59:59.000Z"),
             companyId: "550e8400-e29b-41d4-a716-446655440000",
             details: {
                 hourlyPay: 50,
@@ -81,23 +75,11 @@ describe("newOpportunityRules", () => {
         expect(result.success).toBe(false)
     });
 
-    it("rejects body with workmode field that is not part of the allowed enums", () => {
-        const result = newOpportunityRules.safeParse({
-            type: "INTERNSHIP",
-            title: "Test opportunity",
-            sourceUrl: "https://example.com/opportunities/software-engineering-internship",
-            workMode: "irl"
-        });
-        
-        expect(result.success).toBe(false)
-    });
-
     it("rejects body with company id not in the right format", () => {
         const result = newOpportunityRules.safeParse({
             type: "INTERNSHIP",
             title: "Test opportunity",
             sourceUrl: "https://example.com/opportunities/software-engineering-internship",
-            workMode: "irl",
             companyId: "not-a-guid"
         });
         
@@ -124,7 +106,6 @@ describe("opportunityQueryRules", () => {
             limit: "10",
             q: "engineer",
             type: "INTERNSHIP",
-            workMode: "REMOTE",
             companyId: "550e8400-e29b-41d4-a716-446655440000",
             location: "San Francisco, CA",
             isActive: "false"
@@ -137,7 +118,6 @@ describe("opportunityQueryRules", () => {
             limit: 10,
             q: "engineer",
             type: "INTERNSHIP",
-            workMode: "REMOTE",
             companyId: "550e8400-e29b-41d4-a716-446655440000",
             location: "San Francisco, CA",
             isActive: false
@@ -179,10 +159,6 @@ describe("opportunityQueryRules", () => {
 
     it("rejects a type that is not part of the allowed enums", () => {
         expect(opportunityQueryRules.safeParse({ type: "project" }).success).toBe(false)
-    });
-
-    it("rejects a workMode that is not part of the allowed enums", () => {
-        expect(opportunityQueryRules.safeParse({ workMode: "irl" }).success).toBe(false)
     });
 
     it("rejects a company id not in the right format", () => {

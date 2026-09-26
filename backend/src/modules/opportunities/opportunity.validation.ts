@@ -8,7 +8,7 @@
 
 import { z } from "zod";
 
-import { OpportunityType, WorkMode } from "../../../generated/prisma/enums.ts";
+import { OpportunityType} from "../../../generated/prisma/enums.ts";
 
 // The body of POST /opportunities. Only type, title and sourceUrl are required,
 // because most sources supply those three and little else.
@@ -21,9 +21,6 @@ export const newOpportunityRules = z.object({
 
   description: z.string().max(20000).optional(),
   location: z.string().trim().max(200).optional(),
-  workMode: z.enum(WorkMode).optional(),
-  postedAt: z.coerce.date().optional(),
-  deadlineAt: z.coerce.date().optional(),
   companyId: z.guid().optional(),
 
   // Type-specific fields, such as a hackathon's team size. Capped so one client
@@ -51,7 +48,6 @@ export const opportunityQueryRules = z.object({
     .optional(),
 
   type: z.enum(OpportunityType).optional(),
-  workMode: z.enum(WorkMode).optional(),
   companyId: z.guid().optional(),
   location: z.string().trim().max(200).optional(),
 

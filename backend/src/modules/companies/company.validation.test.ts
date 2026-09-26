@@ -13,11 +13,9 @@ describe("newCompanyRules", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts a body with every field (name, industry, websiteUrl, logoUrl", () => {
+  it("accepts a body with every field (name, logoUrl", () => {
     const result = newCompanyRules.safeParse({
       name: "Stripe",
-      industry: "Fintech",
-      websiteUrl: "https://example.com",
       logoUrl: "https://example.com/logo.png",
     });
 
@@ -25,8 +23,6 @@ describe("newCompanyRules", () => {
 
     expect(result.data).toEqual({
       name: "Stripe",
-      industry: "Fintech",
-      websiteUrl: "https://example.com",
       logoUrl: "https://example.com/logo.png",
     });
   });
@@ -34,8 +30,6 @@ describe("newCompanyRules", () => {
   it("strips any fields that are not permitted", () => {
     const result = newCompanyRules.safeParse({
       name: "Stripe",
-      industry: "Fintech",
-      websiteUrl: "https://example.com",
       logoUrl: "https://example.com/logo.png",
       notAField: 2
     });
@@ -44,8 +38,6 @@ describe("newCompanyRules", () => {
     
     expect(result.data).toEqual({
       name: "Stripe",
-      industry: "Fintech",
-      websiteUrl: "https://example.com",
       logoUrl: "https://example.com/logo.png",
     });
 

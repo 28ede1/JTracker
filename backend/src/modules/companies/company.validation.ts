@@ -12,8 +12,6 @@ import { z } from "zod";
 // arrives from a job posting that names the employer and nothing else.
 export const newCompanyRules = z.object({
   name: z.string().min(1),
-  industry: z.string().optional(),
-  websiteUrl: z.string().optional(),
   logoUrl: z.string().optional(),
 });
 
